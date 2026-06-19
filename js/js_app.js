@@ -123,7 +123,6 @@ function pushNote(noteInput) {
   state.history.push({ type: 'add', note });
   state.lastRecommendations = [];
   state.chordCandidates = [];
-  // 멜로디 변경 시 후보 drawer 닫기 (오래된 정보)
   const drawer = $('candidatesDrawer');
   if (drawer) {
     drawer.hidden = true;
@@ -158,12 +157,10 @@ function renderEmptyHint() {
   const hint = $('emptyScoreHint');
   if (!host || !hint) return;
   const empty = state.notes.length === 0;
-  // 비어 있을 때: vex-host 안의 vex-empty 메시지 제거하고 중앙 안내 표시
   hint.hidden = !empty;
   if (empty) {
     const vexEmpty = host.querySelector('.vex-empty');
     if (vexEmpty) vexEmpty.remove();
-    // vexhost 자체를 깔끔하게 비우기 (VexFlow 가 그릴 host는 그대로 유지)
   }
 }
 
@@ -218,7 +215,6 @@ function analyze() {
   const summary = `${root} ${mode === 'major' ? '장조' : '단조'} · ${bars.length}마디 분석 완료 · 평균 추천도 ${Math.round(avgConfidence * 100)}%`;
   setText('resultSummary', summary);
   renderRecommendations();
-  // 후보 drawer 펼치기
   const drawer = $('candidatesDrawer');
   if (drawer) {
     drawer.hidden = false;
@@ -236,6 +232,21 @@ function chooseChordCandidate(barIndex, candidateIndex) {
   renderRecommendations();
   updateStats(state.notes, state.lastRecommendations);
   toast(`${barIndex + 1}마디 코드를 선택했습니다`);
+}
+
+function restoreChordChoices(choices) {
+  let changed = false;
+  (Array.isArray(choices) ? choices : []).forEach(({ bar, rootPc, quality }) => {
+    const candidates = state.chordCandidates[bar];
+    const next = candidates?.find((item) => item.chord.rootPc === rootPc && item.chord.quality === quality);
+    const current = state.lastRecommendations[bar];
+    if (!next || (current && current.chord.rootPc === rootPc && current.chord.quality === quality)) return;
+    state.lastRecommendations[bar] = next;
+    changed = true;
+  });
+  if (!changed) return;
+  renderRecommendations();
+  updateStats(state.notes, state.lastRecommendations);
 }
 
 function makeProgression() {
@@ -408,6 +419,9 @@ function attachEvents() {
   $('sampleButton').addEventListener('click', loadSample);
   $('melodyAiButton').addEventListener('click', appendSuggestedMelody);
   $('exportButton') && $('exportButton').addEventListener('click', exportPng);
+  document.addEventListener('composer:restore-chord-choices', (event) => {
+    restoreChordChoices(event.detail?.choices);
+  });
 
   document.querySelectorAll('[data-accompaniment]').forEach((button) => {
     button.addEventListener('click', () => setAccompaniment(button.dataset.accompaniment));
@@ -431,7 +445,6 @@ function init() {
   renderMiniMelody($('miniMelody'), []);
   renderMiniChords($('miniChords'), []);
   renderChordCandidates($('chordCandidates'), [], {});
-  // 첫 진입 시 drawer/hint 초기 상태
   const drawer = $('candidatesDrawer');
   if (drawer) {
     drawer.hidden = true;
