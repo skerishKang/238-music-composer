@@ -118,7 +118,7 @@ function redo() {
 }
 
 function isPianoShortcut(event) {
-  return !event.ctrlKey && !event.metaKey && !event.altKey
+  return !event.ctrlKey && !event.metaKey
     && !isTextField(event.target) && PIANO_SHORTCUTS.has(event.key.toLowerCase());
 }
 
@@ -127,11 +127,12 @@ function init() {
   updateControls();
 
   document.addEventListener('pointerdown', (event) => {
-    if (event.target.closest(PIANO_KEYS)) beginChange();
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest(PIANO_KEYS)) beginChange();
   }, true);
 
   document.addEventListener('click', (event) => {
-    const target = event.target.closest('button');
+    const target = event.target instanceof Element ? event.target.closest('button') : null;
     if (!target) return;
     if (target.id === 'undoButton' || target.id === 'redoButton') {
       event.preventDefault();
