@@ -2,13 +2,14 @@
 // 500줄 이내 유지
 
 import {
-  parseMelody, buildMelodyText, buildDiatonic, recommendAll, buildProgression,
+  parseMelody, buildMelodyText, buildDiatonic, recommendTopAll, buildProgression,
   groupByBar, PROGRESSION_LABELS, normalizeRoot, noteName,
 } from './js_theory.js';
 import { mountPiano } from './js_piano.js';
 import { renderMelodyScore, renderChordStrip, exportMelodyPng } from './js_score.js';
 import { playSequence, stopSequence, previewNote } from './js_audio.js';
 import { toast, updateStats, renderMiniMelody, renderMiniChords } from './js_ui.js';
+import { renderChordCandidates } from './js_chord_candidates.js';
 
 const SAMPLE_MELODY = 'C4:q E4:e G4:e | A4:q G4:e E4:e | F4:h D4:h | G4:q E4:e C4:e | D4:q F4:e A4:e | G4:h E4:h | C4:w';
 const BEATS_PER_BAR = 4;
@@ -16,6 +17,7 @@ const BEATS_PER_BAR = 4;
 const state = {
   notes: [],
   lastRecommendations: [],
+  chordCandidates: [],
   history: [],
   pattern: 'pop',
   accompaniment: 'off',
@@ -94,6 +96,15 @@ function pushNote(noteInput) {
   previewNote(note.pitch, note.octave, 0.35);
 }
 
+function renderRecommendations() {
+  renderChordStrip($('chordStrip'), state.lastRecommendations);
+  renderMiniChords($('miniChords'), state.lastRecommendations);
+  renderChordCandidates($('chordCandidates'), state.chordCandidates, {
+    selected: state.lastRecommendations,
+    onSelect: chooseChordCandidate,
+  });
+}
+
 function refreshMelodyUi() {
   if (textSource !== 'piano') return;
   const text = buildMelodyText(state.notes);
@@ -104,7 +115,7 @@ function refreshMelodyUi() {
   updateStats(state.notes, state.lastRecommendations);
   renderMelodyScore($('melodyScore'), state.notes);
   renderMiniMelody($('miniMelody'), state.notes);
-  renderMiniChords($('miniChords'), state.lastRecommendations);
+  renderRecommendations();
 }
 
 function syncFromText() {
@@ -112,13 +123,15 @@ function syncFromText() {
   const text = $('melodyInput').value;
   const parsed = parseMelody(text);
   state.notes = parsed.notes;
+  state.lastRecommendations = [];
+  state.chordCandidates = [];
   if (parsed.errors.length) {
     toast(parsed.errors[0]);
   }
   updateStats(state.notes, state.lastRecommendations);
   renderMelodyScore($('melodyScore'), state.notes);
   renderMiniMelody($('miniMelody'), state.notes);
-  renderMiniChords($('miniChords'), state.lastRecommendations);
+  renderRecommendations();
 }
 
 function getContext() {
@@ -135,15 +148,24 @@ function analyze() {
     return false;
   }
   const { root, mode, diatonic, bars } = getContext();
-  state.lastRecommendations = recommendAll(bars, diatonic);
+  state.chordCandidates = recommendTopAll(bars, diatonic, 3);
+  state.lastRecommendations = state.chordCandidates.map((candidates) => candidates[0]);
   const avgConfidence = state.lastRecommendations.reduce((s, r) => s + r.confidence, 0) / state.lastRecommendations.length;
   const summary = `${root} ${mode === 'major' ? '장조' : '단조'} · ${bars.length}마디 분석 완료 · 평균 추천도 ${Math.round(avgConfidence * 100)}%`;
   setText('resultSummary', summary);
-  renderChordStrip($('chordStrip'), state.lastRecommendations);
-  renderMiniChords($('miniChords'), state.lastRecommendations);
+  renderRecommendations();
   updateStats(state.notes, state.lastRecommendations);
-  toast('AI 코드 추천 완료');
+  toast('AI 코드 후보 추천 완료');
   return true;
+}
+
+function chooseChordCandidate(barIndex, candidateIndex) {
+  const candidates = state.chordCandidates[barIndex];
+  if (!candidates || !candidates[candidateIndex]) return;
+  state.lastRecommendations[barIndex] = candidates[candidateIndex];
+  renderRecommendations();
+  updateStats(state.notes, state.lastRecommendations);
+  toast(`${barIndex + 1}마디 코드를 선택했습니다`);
 }
 
 function makeProgression() {
@@ -154,10 +176,10 @@ function makeProgression() {
   state.pattern = $('progressionSelect').value;
   const { root, mode, diatonic, bars } = getContext();
   state.lastRecommendations = buildProgression(bars, diatonic, state.pattern);
+  state.chordCandidates = [];
   const summary = `${root} ${mode === 'major' ? '장조' : '단조'} · ${PROGRESSIONS_LABEL(state.pattern)} 진행 적용`;
   setText('resultSummary', summary);
-  renderChordStrip($('chordStrip'), state.lastRecommendations);
-  renderMiniChords($('miniChords'), state.lastRecommendations);
+  renderRecommendations();
   updateStats(state.notes, state.lastRecommendations);
   toast('코드 진행 적용 완료');
   return true;
@@ -207,8 +229,8 @@ function appendSuggestedMelody() {
   textSource = 'piano';
   const allBars = groupByBar(state.notes);
   state.lastRecommendations = buildProgression(allBars, diatonic, state.pattern);
+  state.chordCandidates = [];
   refreshMelodyUi();
-  renderChordStrip($('chordStrip'), state.lastRecommendations);
   setText('resultSummary', `${root} ${mode === 'major' ? '장조' : '단조'} · 코드 기반 2마디 멜로디 초안 추가`);
   toast('AI 연결 전: 코드 기반 멜로디 초안을 추가했습니다');
 }
@@ -239,6 +261,8 @@ function undo() {
     return;
   }
   state.notes.pop();
+  state.lastRecommendations = [];
+  state.chordCandidates = [];
   textSource = 'piano';
   refreshMelodyUi();
 }
@@ -246,6 +270,7 @@ function undo() {
 function clearMelody() {
   state.notes = [];
   state.lastRecommendations = [];
+  state.chordCandidates = [];
   textSource = 'piano';
   refreshMelodyUi();
   setText('resultSummary', '건반을 눌러 멜로디를 쌓고, AI 코드 추천을 눌러보세요.');
@@ -253,6 +278,7 @@ function clearMelody() {
   renderMelodyScore($('melodyScore'), []);
   renderMiniMelody($('miniMelody'), []);
   renderMiniChords($('miniChords'), []);
+  renderChordCandidates($('chordCandidates'), [], {});
   updateStats([], []);
   toast('멜로디를 지웠습니다');
 }
@@ -329,6 +355,7 @@ function init() {
   renderChordStrip($('chordStrip'), []);
   renderMiniMelody($('miniMelody'), []);
   renderMiniChords($('miniChords'), []);
+  renderChordCandidates($('chordCandidates'), [], {});
   updateStats([], []);
 }
 
