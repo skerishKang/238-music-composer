@@ -40,7 +40,10 @@ function readSelectedCandidateIndexes() {
     indexes[barIndex] = candidateIndex;
   }
 
-  const complete = indexes.length && indexes.every((index) => Number.isInteger(index));
+  const complete = indexes.length && Array.from(
+    { length: indexes.length },
+    (_, index) => Number.isInteger(indexes[index]),
+  ).every(Boolean);
   return complete && indexes.some((index) => index > 0) ? indexes : [];
 }
 
@@ -122,6 +125,9 @@ function parseProject(rawText) {
   }
   if (!hasOption('progressionSelect', settings.progression) || !hasOption('patternSelect', settings.accompaniment)) {
     throw new Error('지원하지 않는 진행 또는 반주입니다.');
+  }
+  if (!project.melody.trim() && project.selectedCandidateIndexes?.length) {
+    throw new Error('빈 멜로디에는 코드 선택을 저장할 수 없습니다.');
   }
   const parsed = validateMelody(project.melody);
 
