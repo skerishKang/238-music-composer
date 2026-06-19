@@ -74,8 +74,14 @@ window.addEventListener('dblclick', (event) => {
 }, true);
 
 window.addEventListener('keydown', (event) => {
-  if (!isSyncing() || event.defaultPrevented || event.isComposing) return;
+  if (event.defaultPrevented || event.isComposing) return;
   const key = event.key.toLowerCase();
-  const historyShortcut = (event.ctrlKey || event.metaKey) && (key === 'z' || key === 'y');
-  if (historyShortcut || isPianoShortcut(event)) block(event);
+  const historyShortcut = (event.ctrlKey || event.metaKey)
+    && !isTextField(event.target) && (key === 'z' || key === 'y');
+  if (historyShortcut) {
+    if (isSyncing()) block(event);
+    else startSyncGuard();
+    return;
+  }
+  if (isSyncing() && isPianoShortcut(event)) block(event);
 }, true);
