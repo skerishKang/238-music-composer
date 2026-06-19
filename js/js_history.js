@@ -13,7 +13,7 @@ let baseline = '';
 let pendingSnapshot = null;
 let settleTimer = null;
 let toastTimer = null;
-let applyingHistory = false;
+let restoringInput = false;
 
 function isTextField(target) {
   return target instanceof HTMLElement
@@ -66,25 +66,26 @@ function scheduleCommit(delay = 0) {
 }
 
 function beginChange(delay = 0) {
-  if (applyingHistory) return;
+  if (restoringInput) return;
   commitPending();
   pendingSnapshot = baseline;
   scheduleCommit(delay);
 }
 
 function beginTextChange() {
-  if (applyingHistory) return;
+  if (restoringInput) return;
   if (pendingSnapshot === null) pendingSnapshot = baseline;
   scheduleCommit(320);
 }
 
 function applySnapshot(snapshot, direction) {
-  applyingHistory = true;
   const input = $('melodyInput');
+  restoringInput = true;
   if (input) {
     input.value = snapshot;
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }
+  restoringInput = false;
   baseline = snapshot;
   pendingSnapshot = null;
   const summary = $('resultSummary');
@@ -94,7 +95,6 @@ function applySnapshot(snapshot, direction) {
       : '되돌린 멜로디를 다시 적용했습니다.';
   }
   showToast(direction === 'undo' ? '되돌리기' : '다시 실행');
-  window.setTimeout(() => { applyingHistory = false; }, 340);
 }
 
 function undo() {
