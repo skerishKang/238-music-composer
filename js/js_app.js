@@ -91,8 +91,11 @@ function pushNote(noteInput) {
   });
   state.notes.push(note);
   state.history.push({ type: 'add', note });
+  state.lastRecommendations = [];
+  state.chordCandidates = [];
   textSource = 'piano';
   refreshMelodyUi();
+  setText('resultSummary', '멜로디가 바뀌었습니다. AI 코드 추천을 다시 눌러보세요.');
   previewNote(note.pitch, note.octave, 0.35);
 }
 
