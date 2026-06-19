@@ -126,11 +126,23 @@ function applyProject(project) {
 }
 
 function downloadProject() {
+  let project;
+  try {
+    project = parseProject(JSON.stringify({
+      format: PROJECT_FORMAT,
+      version: PROJECT_VERSION,
+      project: readProject(),
+    }));
+  } catch (error) {
+    notify(error?.message || '현재 작업을 저장할 수 없습니다.');
+    return;
+  }
+
   const payload = {
     format: PROJECT_FORMAT,
     version: PROJECT_VERSION,
     exportedAt: new Date().toISOString(),
-    project: readProject(),
+    project,
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
