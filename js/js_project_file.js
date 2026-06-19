@@ -169,6 +169,7 @@ function restoreSelectedChordChoices(project) {
         `.chord-candidate[data-bar-index="${barIndex}"][data-chord-root-pc="${choice.rootPc}"][data-chord-quality="${choice.quality}"]`,
       )?.click();
     });
+    notify('프로젝트 파일을 불러왔습니다');
   }, 360);
 }
 
