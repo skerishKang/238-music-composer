@@ -7,6 +7,7 @@ const PROJECT_FORMAT = '238-music-composer-project';
 const PROJECT_VERSION = 1;
 const MAX_FILE_SIZE = 1024 * 1024;
 const MAX_MELODY_LENGTH = 20000;
+const MAX_CANDIDATE_INDEX = 2;
 
 const $ = (id) => document.getElementById(id);
 let toastTimer = null;
@@ -27,6 +28,22 @@ function notify(message) {
   toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2400);
 }
 
+function readSelectedCandidateIndexes() {
+  const selected = Array.from(document.querySelectorAll('.chord-candidate.is-selected'));
+  if (!selected.length) return [];
+
+  const indexes = [];
+  for (const button of selected) {
+    const barIndex = Number(button.dataset.barIndex);
+    const candidateIndex = Number(button.dataset.candidateIndex);
+    if (!Number.isInteger(barIndex) || !Number.isInteger(candidateIndex) || barIndex < 0) return [];
+    indexes[barIndex] = candidateIndex;
+  }
+
+  const complete = indexes.length && indexes.every((index) => Number.isInteger(index));
+  return complete && indexes.some((index) => index > 0) ? indexes : [];
+}
+
 function readProject() {
   return {
     melody: $('melodyInput')?.value || '',
@@ -37,6 +54,7 @@ function readProject() {
       progression: $('progressionSelect')?.value || 'pop',
       accompaniment: $('patternSelect')?.value || 'arpeggio',
     },
+    selectedCandidateIndexes: readSelectedCandidateIndexes(),
   };
 }
 
@@ -54,11 +72,29 @@ function normalizeBpm(value) {
 }
 
 function validateMelody(melody) {
-  if (!melody.trim()) return;
+  if (!melody.trim()) return parseMelody('');
   const parsed = parseMelody(melody);
   if (parsed.errors.length) {
     throw new Error('프로젝트 안의 멜로디 형식을 확인해 주세요.');
   }
+  return parsed;
+}
+
+function normalizeSelectedCandidateIndexes(value, bars) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    throw new Error('저장된 코드 선택 정보를 확인해 주세요.');
+  }
+  if (value.length === 0) return [];
+  if (value.length !== bars) {
+    throw new Error('저장된 코드 선택의 마디 수가 맞지 않습니다.');
+  }
+  return value.map((index) => {
+    if (!Number.isInteger(index) || index < 0 || index > MAX_CANDIDATE_INDEX) {
+      throw new Error('저장된 코드 후보 정보를 확인해 주세요.');
+    }
+    return index;
+  });
 }
 
 function parseProject(rawText) {
@@ -87,7 +123,7 @@ function parseProject(rawText) {
   if (!hasOption('progressionSelect', settings.progression) || !hasOption('patternSelect', settings.accompaniment)) {
     throw new Error('지원하지 않는 진행 또는 반주입니다.');
   }
-  validateMelody(project.melody);
+  const parsed = validateMelody(project.melody);
 
   return {
     melody: project.melody,
@@ -98,6 +134,7 @@ function parseProject(rawText) {
       progression: String(settings.progression),
       accompaniment: String(settings.accompaniment),
     },
+    selectedCandidateIndexes: normalizeSelectedCandidateIndexes(project.selectedCandidateIndexes, parsed.bars),
   };
 }
 
@@ -106,6 +143,21 @@ function setControl(id, value) {
   if (!control) return;
   control.value = value;
   control.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function restoreSelectedCandidates(project) {
+  if (!project.selectedCandidateIndexes.length) return;
+  const input = $('melodyInput');
+  window.setTimeout(() => {
+    if (!input || input.value !== project.melody) return;
+    $('analyzeButton')?.click();
+    project.selectedCandidateIndexes.forEach((candidateIndex, barIndex) => {
+      if (candidateIndex === 0) return;
+      document.querySelector(
+        `.chord-candidate[data-bar-index="${barIndex}"][data-candidate-index="${candidateIndex}"]`,
+      )?.click();
+    });
+  }, 360);
 }
 
 function applyProject(project) {
@@ -121,6 +173,7 @@ function applyProject(project) {
     melodyInput.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
+  restoreSelectedCandidates(project);
   setStatus('프로젝트 불러옴', 'restored');
   notify('프로젝트 파일을 불러왔습니다');
 }
