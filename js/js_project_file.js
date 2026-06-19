@@ -7,6 +7,7 @@ const PROJECT_FORMAT = '238-music-composer-project';
 const PROJECT_VERSION = 1;
 const MAX_FILE_SIZE = 1024 * 1024;
 const MAX_MELODY_LENGTH = 20000;
+const CHORD_QUALITIES = new Set(['maj', 'min', 'dim', 'aug']);
 
 const $ = (id) => document.getElementById(id);
 let toastTimer = null;
@@ -27,6 +28,31 @@ function notify(message) {
   toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2400);
 }
 
+function readSelectedChordChoices() {
+  const selected = Array.from(document.querySelectorAll('.chord-candidate.is-selected'));
+  if (!selected.length) return [];
+
+  const choices = [];
+  let hasAlternate = false;
+  for (const button of selected) {
+    const barIndex = Number(button.dataset.barIndex);
+    const candidateIndex = Number(button.dataset.candidateIndex);
+    const rootPc = Number(button.dataset.chordRootPc);
+    const quality = button.dataset.chordQuality;
+    if (!Number.isInteger(barIndex) || barIndex < 0 || !Number.isInteger(rootPc) || !CHORD_QUALITIES.has(quality)) {
+      return [];
+    }
+    choices[barIndex] = { rootPc, quality };
+    hasAlternate ||= candidateIndex > 0;
+  }
+
+  const complete = choices.length && Array.from(
+    { length: choices.length },
+    (_, index) => Boolean(choices[index]),
+  ).every(Boolean);
+  return complete && hasAlternate ? choices : [];
+}
+
 function readProject() {
   return {
     melody: $('melodyInput')?.value || '',
@@ -37,6 +63,7 @@ function readProject() {
       progression: $('progressionSelect')?.value || 'pop',
       accompaniment: $('patternSelect')?.value || 'arpeggio',
     },
+    selectedChordChoices: readSelectedChordChoices(),
   };
 }
 
@@ -54,11 +81,30 @@ function normalizeBpm(value) {
 }
 
 function validateMelody(melody) {
-  if (!melody.trim()) return;
+  if (!melody.trim()) return parseMelody('');
   const parsed = parseMelody(melody);
   if (parsed.errors.length) {
     throw new Error('프로젝트 안의 멜로디 형식을 확인해 주세요.');
   }
+  return parsed;
+}
+
+function normalizeSelectedChordChoices(value, bars) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    throw new Error('저장된 코드 선택 정보를 확인해 주세요.');
+  }
+  if (value.length === 0) return [];
+  if (value.length !== bars) {
+    throw new Error('저장된 코드 선택의 마디 수가 맞지 않습니다.');
+  }
+  return value.map((choice) => {
+    if (!choice || !Number.isInteger(choice.rootPc) || choice.rootPc < 0 || choice.rootPc > 11
+      || !CHORD_QUALITIES.has(choice.quality)) {
+      throw new Error('저장된 코드 후보 정보를 확인해 주세요.');
+    }
+    return { rootPc: choice.rootPc, quality: choice.quality };
+  });
 }
 
 function parseProject(rawText) {
@@ -87,7 +133,10 @@ function parseProject(rawText) {
   if (!hasOption('progressionSelect', settings.progression) || !hasOption('patternSelect', settings.accompaniment)) {
     throw new Error('지원하지 않는 진행 또는 반주입니다.');
   }
-  validateMelody(project.melody);
+  if (!project.melody.trim() && project.selectedChordChoices?.length) {
+    throw new Error('빈 멜로디에는 코드 선택을 저장할 수 없습니다.');
+  }
+  const parsed = validateMelody(project.melody);
 
   return {
     melody: project.melody,
@@ -98,6 +147,7 @@ function parseProject(rawText) {
       progression: String(settings.progression),
       accompaniment: String(settings.accompaniment),
     },
+    selectedChordChoices: normalizeSelectedChordChoices(project.selectedChordChoices, parsed.bars),
   };
 }
 
@@ -106,6 +156,20 @@ function setControl(id, value) {
   if (!control) return;
   control.value = value;
   control.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function restoreSelectedChordChoices(project) {
+  if (!project.selectedChordChoices.length) return;
+  const input = $('melodyInput');
+  window.setTimeout(() => {
+    if (!input || input.value !== project.melody) return;
+    $('analyzeButton')?.click();
+    project.selectedChordChoices.forEach((choice, barIndex) => {
+      document.querySelector(
+        `.chord-candidate[data-bar-index="${barIndex}"][data-chord-root-pc="${choice.rootPc}"][data-chord-quality="${choice.quality}"]`,
+      )?.click();
+    });
+  }, 360);
 }
 
 function applyProject(project) {
@@ -121,6 +185,7 @@ function applyProject(project) {
     melodyInput.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
+  restoreSelectedChordChoices(project);
   setStatus('프로젝트 불러옴', 'restored');
   notify('프로젝트 파일을 불러왔습니다');
 }
