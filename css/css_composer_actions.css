@@ -34,6 +34,36 @@
   letter-spacing: 0.02em;
 }
 
+.workspace-save-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.30);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.workspace-save-status[data-tone="saving"] {
+  border-color: rgba(34, 211, 238, 0.28);
+  color: #a5f3fc;
+}
+
+.workspace-save-status[data-tone="saved"],
+.workspace-save-status[data-tone="restored"] {
+  border-color: rgba(74, 222, 128, 0.24);
+  color: #bbf7d0;
+}
+
+.workspace-save-status[data-tone="warning"] {
+  border-color: rgba(251, 191, 36, 0.32);
+  color: #fde68a;
+}
+
 .workspace-button {
   min-height: 34px;
   padding: 0 14px;
