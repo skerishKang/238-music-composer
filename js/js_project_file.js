@@ -1,12 +1,15 @@
 // js_project_file.js — 작곡 프로젝트 파일 내보내기·불러오기
 // 500줄 이내 유지
 
+import { parseMelody } from './js_theory.js';
+
 const PROJECT_FORMAT = '238-music-composer-project';
 const PROJECT_VERSION = 1;
 const MAX_FILE_SIZE = 1024 * 1024;
 const MAX_MELODY_LENGTH = 20000;
 
 const $ = (id) => document.getElementById(id);
+let toastTimer = null;
 
 function setStatus(message, tone = 'neutral') {
   const status = $('saveStatus');
@@ -20,7 +23,8 @@ function notify(message) {
   if (!toast) return;
   toast.textContent = message;
   toast.classList.add('show');
-  window.setTimeout(() => toast.classList.remove('show'), 2400);
+  if (toastTimer) window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2400);
 }
 
 function readProject() {
@@ -49,6 +53,14 @@ function normalizeBpm(value) {
   return String(bpm);
 }
 
+function validateMelody(melody) {
+  if (!melody.trim()) return;
+  const parsed = parseMelody(melody);
+  if (parsed.errors.length) {
+    throw new Error('프로젝트 안의 멜로디 형식을 확인해 주세요.');
+  }
+}
+
 function parseProject(rawText) {
   let payload;
   try {
@@ -75,6 +87,7 @@ function parseProject(rawText) {
   if (!hasOption('progressionSelect', settings.progression) || !hasOption('patternSelect', settings.accompaniment)) {
     throw new Error('지원하지 않는 진행 또는 반주입니다.');
   }
+  validateMelody(project.melody);
 
   return {
     melody: project.melody,
