@@ -1,0 +1,13 @@
+# Secrets
+.env
+.env.*
+.secrets/
+
+# Local artifacts
+local-backup/
+work/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
