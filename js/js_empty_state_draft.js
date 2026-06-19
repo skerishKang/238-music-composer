@@ -33,10 +33,25 @@ function startFromEmptyState(event) {
 
   input.value = buildStarterMelody();
   input.dispatchEvent(new Event('input', { bubbles: true }));
+  window.setTimeout(() => $('analyzeButton')?.click(), 320);
+}
 
-  window.setTimeout(() => {
-    $('analyzeButton')?.click();
-  }, 320);
+function keepHiddenDrawerClosed() {
+  const drawer = $('candidatesDrawer');
+  if (!drawer) return;
+  const closeWhenHidden = () => {
+    if (drawer.hidden && drawer.open) drawer.open = false;
+  };
+  new MutationObserver(closeWhenHidden).observe(drawer, {
+    attributes: true,
+    attributeFilter: ['hidden'],
+  });
+  closeWhenHidden();
 }
 
 document.addEventListener('click', startFromEmptyState, true);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', keepHiddenDrawerClosed);
+} else {
+  keepHiddenDrawerClosed();
+}
