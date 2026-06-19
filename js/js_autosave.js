@@ -83,7 +83,10 @@ function restoreProject() {
 function saveNow() {
   saveTimer = null;
   const snapshot = snapshotProject();
-  if (snapshot === lastSnapshot) return;
+  if (snapshot === lastSnapshot) {
+    setStatus('자동 저장됨', 'saved');
+    return;
+  }
   try {
     window.localStorage.setItem(STORAGE_KEY, snapshot);
     lastSnapshot = snapshot;
