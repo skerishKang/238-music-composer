@@ -30,27 +30,20 @@ function notify(message) {
 
 function readSelectedChordChoices() {
   const selected = Array.from(document.querySelectorAll('.chord-candidate.is-selected'));
-  if (!selected.length) return [];
-
   const choices = [];
-  let hasAlternate = false;
+
   for (const button of selected) {
-    const barIndex = Number(button.dataset.barIndex);
+    const bar = Number(button.dataset.barIndex);
     const candidateIndex = Number(button.dataset.candidateIndex);
     const rootPc = Number(button.dataset.chordRootPc);
     const quality = button.dataset.chordQuality;
-    if (!Number.isInteger(barIndex) || barIndex < 0 || !Number.isInteger(rootPc) || !CHORD_QUALITIES.has(quality)) {
+    if (!Number.isInteger(bar) || bar < 0 || !Number.isInteger(rootPc) || !CHORD_QUALITIES.has(quality)) {
       return [];
     }
-    choices[barIndex] = { rootPc, quality };
-    hasAlternate ||= candidateIndex > 0;
+    if (candidateIndex > 0) choices.push({ bar, rootPc, quality });
   }
 
-  const complete = choices.length && Array.from(
-    { length: choices.length },
-    (_, index) => Boolean(choices[index]),
-  ).every(Boolean);
-  return complete && hasAlternate ? choices : [];
+  return choices;
 }
 
 function readProject() {
@@ -89,22 +82,30 @@ function validateMelody(melody) {
   return parsed;
 }
 
+function normalizeChordChoice(choice, bar, bars) {
+  if (!choice || !Number.isInteger(bar) || bar < 0 || bar >= bars
+    || !Number.isInteger(choice.rootPc) || choice.rootPc < 0 || choice.rootPc > 11
+    || !CHORD_QUALITIES.has(choice.quality)) {
+    throw new Error('저장된 코드 후보 정보를 확인해 주세요.');
+  }
+  return { bar, rootPc: choice.rootPc, quality: choice.quality };
+}
+
 function normalizeSelectedChordChoices(value, bars) {
-  if (value === undefined) return [];
+  if (value === undefined || value.length === 0) return [];
   if (!Array.isArray(value)) {
     throw new Error('저장된 코드 선택 정보를 확인해 주세요.');
   }
-  if (value.length === 0) return [];
-  if (value.length !== bars) {
-    throw new Error('저장된 코드 선택의 마디 수가 맞지 않습니다.');
+
+  const legacyDense = value.length === bars && value.every((choice) => choice && choice.bar === undefined);
+  const choices = legacyDense
+    ? value.map((choice, bar) => normalizeChordChoice(choice, bar, bars))
+    : value.map((choice) => normalizeChordChoice(choice, choice?.bar, bars));
+  const uniqueBars = new Set(choices.map((choice) => choice.bar));
+  if (uniqueBars.size !== choices.length) {
+    throw new Error('저장된 코드 선택 정보가 중복되었습니다.');
   }
-  return value.map((choice) => {
-    if (!choice || !Number.isInteger(choice.rootPc) || choice.rootPc < 0 || choice.rootPc > 11
-      || !CHORD_QUALITIES.has(choice.quality)) {
-      throw new Error('저장된 코드 후보 정보를 확인해 주세요.');
-    }
-    return { rootPc: choice.rootPc, quality: choice.quality };
-  });
+  return choices;
 }
 
 function parseProject(rawText) {
@@ -164,11 +165,9 @@ function restoreSelectedChordChoices(project) {
   window.setTimeout(() => {
     if (!input || input.value !== project.melody) return;
     $('analyzeButton')?.click();
-    project.selectedChordChoices.forEach((choice, barIndex) => {
-      document.querySelector(
-        `.chord-candidate[data-bar-index="${barIndex}"][data-chord-root-pc="${choice.rootPc}"][data-chord-quality="${choice.quality}"]`,
-      )?.click();
-    });
+    document.dispatchEvent(new CustomEvent('composer:restore-chord-choices', {
+      detail: { choices: project.selectedChordChoices },
+    }));
     notify('프로젝트 파일을 불러왔습니다');
   }, 360);
 }
