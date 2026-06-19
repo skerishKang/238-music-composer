@@ -1,13 +1,22 @@
-// js_empty_state_draft.js — 빈 악보에서 AI 멜로디 초안 시작
+// js_empty_state_draft.js — 빈 악보에서 규칙 기반 멜로디 초안 시작
 // 500줄 이내 유지
 
-import { buildDiatonic, noteName, normalizeRoot } from './js_theory.js';
+import { buildDiatonic, buildProgression, noteName, normalizeRoot } from './js_theory.js';
 
 const $ = (id) => document.getElementById(id);
+let toastTimer = null;
 
-function buildBar(chord, octave = 4) {
+function showToast(message) {
+  const toast = $('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('show');
+  if (toastTimer) window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+function buildBar(chord, shape, octave = 4) {
   const pcs = chord.intervals.map((interval) => (chord.rootPc + interval) % 12);
-  const shape = [0, 1, 2, 1];
   return shape
     .map((index) => `${noteName(pcs[index % pcs.length])}${octave}:q`)
     .join(' ');
@@ -16,10 +25,19 @@ function buildBar(chord, octave = 4) {
 function buildStarterMelody() {
   const root = normalizeRoot($('rootSelect')?.value || 'C');
   const mode = $('modeSelect')?.value || 'major';
+  const pattern = $('progressionSelect')?.value || 'pop';
   const diatonic = buildDiatonic(root, mode);
-  const tonic = diatonic[0];
-  const dominant = diatonic[4] || diatonic[0];
-  return `${buildBar(tonic)} | ${buildBar(dominant)}`;
+  const chords = buildProgression([[], []], diatonic, pattern).slice(0, 2);
+  const shapes = [[0, 1, 2, 1], [2, 1, 0, 0]];
+
+  return {
+    root,
+    mode,
+    text: chords.map((recommendation, index) => buildBar(
+      recommendation.chord,
+      shapes[index] || shapes[0],
+    )).join(' | '),
+  };
 }
 
 function startFromEmptyState(event) {
@@ -31,9 +49,19 @@ function startFromEmptyState(event) {
   event.preventDefault();
   event.stopImmediatePropagation();
 
-  input.value = buildStarterMelody();
+  const draft = buildStarterMelody();
+  input.value = draft.text;
   input.dispatchEvent(new Event('input', { bubbles: true }));
-  window.setTimeout(() => $('analyzeButton')?.click(), 320);
+
+  const summary = $('resultSummary');
+  if (summary) {
+    summary.textContent = `${draft.root} ${draft.mode === 'minor' ? '단조' : '장조'} · 규칙 기반 2마디 멜로디 초안 생성`;
+  }
+
+  window.setTimeout(() => {
+    if (input.value === draft.text) $('analyzeButton')?.click();
+  }, 320);
+  window.setTimeout(() => showToast('규칙 기반 2마디 멜로디 초안을 만들었습니다'), 380);
 }
 
 function keepHiddenDrawerClosed() {
