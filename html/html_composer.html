@@ -15,42 +15,29 @@
 </head>
 <body class="composer-body">
   <main class="composer-shell">
-    <div class="composer-topline">
-      <a class="back-link" href="../index.html">← 처음으로</a>
-      <span class="composer-stage" id="composerStage">건반 입력 → 악보 → AI 코드 추천 → 들어보기</span>
-    </div>
-
-    <section class="composer-action-panel" aria-label="주요 작곡 동작">
-      <div class="composer-action-copy">
-        <p class="eyebrow">AI Composition Flow</p>
-        <h1>멜로디를 치면, 코드와 반주가 따라옵니다</h1>
-        <p>
-          아래 건반으로 씨앗 멜로디를 만들고, 상단 버튼으로 코드 추천과 재생을 바로 실행하세요.
-          고급 설정은 조성, BPM, 반주 스타일을 바꿀 때만 열면 됩니다.
-        </p>
+    <header class="workspace-toolbar" aria-label="작곡 작업 도구">
+      <div class="workspace-toolbar-left">
+        <a class="back-link" href="../index.html">← 처음으로</a>
+        <span class="workspace-status" id="composerStage">멜로디 → 코드 → 들어보기</span>
       </div>
-      <div class="composer-action-buttons" aria-label="주요 버튼">
-        <button class="primary-button hero-action" type="button" id="analyzeButton">AI 코드 추천</button>
-        <button class="secondary-button hero-action" type="button" id="playButton">▶ 들어보기</button>
-        <button class="secondary-button hero-action" type="button" id="melodyAiButton">AI 멜로디 추천</button>
+      <div class="workspace-toolbar-right" aria-label="주요 작업 버튼">
+        <button class="workspace-button primary" type="button" id="melodyAiButton">AI 멜로디</button>
+        <button class="workspace-button" type="button" id="analyzeButton">AI 코드 추천</button>
+        <button class="workspace-button" type="button" id="playButton">▶ 들어보기</button>
       </div>
-      <div class="composer-utility-buttons" aria-label="보조 버튼">
-        <button class="ghost-button" type="button" id="progressionButton">코드 진행 만들기</button>
-        <button class="ghost-button" type="button" id="stopButton">정지</button>
-        <button class="ghost-button" type="button" id="sampleButton">예시 멜로디</button>
-        <button class="ghost-button" type="button" id="undoButton">한 음 되돌리기</button>
-        <button class="ghost-button danger-soft" type="button" id="clearMelodyButton">전체 지우기</button>
-      </div>
-    </section>
+    </header>
 
     <section class="card big-card score-card" aria-label="악보">
-      <header>
+      <header class="score-card-header">
         <h3>멜로디</h3>
-        <span class="muted" id="resultSummary">건반을 눌러 멜로디를 쌓고, AI 코드 추천을 눌러보세요.</span>
+        <span class="muted" id="resultSummary">아래 피아노를 눌러 멜로디를 입력하세요.</span>
       </header>
-      <div class="chord-strip" id="chordStrip" aria-label="추천 코드 진행"></div>
-      <div id="chordCandidates" class="chord-candidates" aria-label="마디별 코드 후보"></div>
+      <div class="selected-chord-chip" id="chordStrip" aria-label="선택된 코드 진행"></div>
       <div id="melodyScore" class="vex-host"></div>
+      <div class="empty-score-hint" id="emptyScoreHint" hidden>
+        <p class="empty-score-title">아직 멜로디가 없습니다.</p>
+        <p class="empty-score-sub">아래 피아노를 눌러 멜로디를 입력하거나,<br />상단 <strong>AI 멜로디</strong>로 2마디 초안을 시작할 수 있어요.</p>
+      </div>
     </section>
 
     <section class="card big-card piano-card" aria-label="피아노 건반">
@@ -59,6 +46,11 @@
         <div id="piano" class="piano" role="group" aria-label="가상 피아노 건반"></div>
       </div>
     </section>
+
+    <details class="candidates-drawer" id="candidatesDrawer" hidden>
+      <summary>코드 후보 <span class="candidates-meta" id="candidatesMeta"></span></summary>
+      <div id="chordCandidates" class="chord-candidates" aria-label="마디별 코드 후보"></div>
+    </details>
 
     <details class="settings" id="settingsDrawer">
       <summary>고급 설정</summary>
@@ -105,14 +97,21 @@
         <div class="control-group">
           <label for="patternSelect">반주</label>
           <select id="patternSelect">
-            <option value="off">반주 끄기</option>
+            <option value="off">반주 끄기 (멜로디만)</option>
             <option value="block">블록 코드</option>
-            <option value="arpeggio">아르페지오</option>
+            <option value="arpeggio" selected>아르페지오</option>
             <option value="pop8">팝 8비트</option>
             <option value="waltz">발라드 3/4</option>
             <option value="funk16">펑크 16비트</option>
           </select>
         </div>
+      </div>
+      <div class="settings-utility" aria-label="보조 도구">
+        <button class="ghost-button" type="button" id="progressionButton">코드 진행 만들기</button>
+        <button class="ghost-button" type="button" id="stopButton">정지</button>
+        <button class="ghost-button" type="button" id="sampleButton">예시 멜로디</button>
+        <button class="ghost-button" type="button" id="undoButton">한 음 되돌리기</button>
+        <button class="ghost-button danger-soft" type="button" id="clearMelodyButton">전체 지우기</button>
       </div>
       <details class="text-drawer">
         <summary>멜로디 텍스트 (편집 가능)</summary>
@@ -125,5 +124,6 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script type="module" src="../js/js_app.js"></script>
+  <script type="module" src="../js/js_empty_state_draft.js"></script>
 </body>
 </html>

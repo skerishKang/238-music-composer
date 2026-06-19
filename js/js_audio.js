@@ -1,14 +1,13 @@
 // js_audio.js — Web Audio 기반 멜로디/반주 재생
 // 500줄 이내 유지
 
-import { groupByBar, noteName } from './js_theory.js';
+import { groupByBar } from './js_theory.js';
 
 let ctx = null;
 let masterGain = null;
 let activeNodes = [];
 let stopFlag = false;
 
-const PEAK_MELODY = 0.42;
 const PEAK_BASS = 0.32;
 const PEAK_CHORD = 0.22;
 
@@ -26,14 +25,14 @@ const ACCOMPANIMENT_PATTERNS = {
     { t: 3, d: 1, idx: 1, vel: 0.7 },
   ],
   pop8: [
-    { t: 0,    d: 0.5, idx: 0, vel: 0.95 },
-    { t: 0.5,  d: 0.5, idx: 2, vel: 0.55 },
-    { t: 1,    d: 0.5, idx: 0, vel: 0.85 },
-    { t: 1.5,  d: 0.5, idx: 2, vel: 0.55 },
-    { t: 2,    d: 0.5, idx: 0, vel: 0.95 },
-    { t: 2.5,  d: 0.5, idx: 2, vel: 0.55 },
-    { t: 3,    d: 0.5, idx: 0, vel: 0.85 },
-    { t: 3.5,  d: 0.5, idx: 2, vel: 0.55 },
+    { t: 0, d: 0.5, idx: 0, vel: 0.95 },
+    { t: 0.5, d: 0.5, idx: 2, vel: 0.55 },
+    { t: 1, d: 0.5, idx: 0, vel: 0.85 },
+    { t: 1.5, d: 0.5, idx: 2, vel: 0.55 },
+    { t: 2, d: 0.5, idx: 0, vel: 0.95 },
+    { t: 2.5, d: 0.5, idx: 2, vel: 0.55 },
+    { t: 3, d: 0.5, idx: 0, vel: 0.85 },
+    { t: 3.5, d: 0.5, idx: 2, vel: 0.55 },
   ],
   waltz: [
     { t: 0, d: 1, idx: 0, vel: 1.0 },
@@ -41,14 +40,14 @@ const ACCOMPANIMENT_PATTERNS = {
     { t: 2, d: 1, idx: 1, vel: 0.7 },
   ],
   funk16: [
-    { t: 0,    d: 0.25, idx: 0, vel: 1.0 },
-    { t: 0.5,  d: 0.25, idx: 2, vel: 0.6 },
-    { t: 1,    d: 0.25, idx: 0, vel: 0.85 },
-    { t: 1.5,  d: 0.25, idx: 2, vel: 0.6 },
-    { t: 2,    d: 0.25, idx: 0, vel: 1.0 },
-    { t: 2.5,  d: 0.25, idx: 2, vel: 0.6 },
-    { t: 3,    d: 0.25, idx: 0, vel: 0.85 },
-    { t: 3.5,  d: 0.25, idx: 2, vel: 0.6 },
+    { t: 0, d: 0.25, idx: 0, vel: 1.0 },
+    { t: 0.5, d: 0.25, idx: 2, vel: 0.6 },
+    { t: 1, d: 0.25, idx: 0, vel: 0.85 },
+    { t: 1.5, d: 0.25, idx: 2, vel: 0.6 },
+    { t: 2, d: 0.25, idx: 0, vel: 1.0 },
+    { t: 2.5, d: 0.25, idx: 2, vel: 0.6 },
+    { t: 3, d: 0.25, idx: 0, vel: 0.85 },
+    { t: 3.5, d: 0.25, idx: 2, vel: 0.6 },
   ],
 };
 
@@ -117,7 +116,6 @@ function beatDuration(bpm) {
   return 60 / Math.max(40, Math.min(220, bpm));
 }
 
-// 음을 마디 단위 스케줄에 맞춰 재생
 function scheduleMelody(melodyNotes, startAt, bpm) {
   if (!melodyNotes || melodyNotes.length === 0) return startAt;
   const beat = beatDuration(bpm);
@@ -131,20 +129,16 @@ function scheduleMelody(melodyNotes, startAt, bpm) {
       playTone(freq, time, dur * 0.95, 'triangle', 0.42);
       time += dur;
     });
-    // 마디 끝까지 시간이 부족하면 4박 채우기
-    const used = barNotes.reduce((s, n) => s + (n.rest ? 0 : n.duration), 0);
+    const used = barNotes.reduce((sum, note) => sum + (note.rest ? 0 : note.duration), 0);
     if (used < 4) {
       time += (4 - used) * beat;
     } else if (used > 4) {
-      // 시간 보정 (다음 마디로 넘기지 않음)
-      const overflow = (used - 4) * beat;
-      time -= overflow;
+      time -= (used - 4) * beat;
     }
   });
   return time;
 }
 
-// 코드를 마디 시작마다 동시에 울림
 function scheduleChords(recommendations, startAt, bpm) {
   const beat = beatDuration(bpm);
   recommendations.forEach((rec, idx) => {
@@ -159,7 +153,6 @@ function scheduleChords(recommendations, startAt, bpm) {
   });
 }
 
-// 반주 패턴을 마디별로 스케줄 (멜로디와 동시 재생 → 음악처럼 들리게)
 function scheduleAccompaniment(recommendations, patternName, startAt, bpm) {
   const pattern = ACCOMPANIMENT_PATTERNS[patternName] || ACCOMPANIMENT_PATTERNS.off;
   if (pattern.length === 0) return startAt;
@@ -171,7 +164,6 @@ function scheduleAccompaniment(recommendations, patternName, startAt, bpm) {
       const when = barStart + step.t * beat;
       const interval = chord.intervals[Math.min(step.idx, chord.intervals.length - 1)];
       const pc = (chord.rootPc + interval) % 12;
-      // 루트(idx 0)는 베이스(낮은 옥타브), 다른 음은 미드
       const octave = step.idx === 0 ? 2 : 3;
       const freq = midiToFreq((octave + 1) * 12 + pc);
       const peak = (step.idx === 0 ? PEAK_BASS : PEAK_CHORD) * (step.vel || 0.8);
@@ -179,8 +171,7 @@ function scheduleAccompaniment(recommendations, patternName, startAt, bpm) {
       playTone(freq, when, dur * 0.92, step.idx === 0 ? 'triangle' : 'sine', peak);
     });
   });
-  const endAt = startAt + recommendations.length * 4 * beat;
-  return endAt;
+  return startAt + recommendations.length * 4 * beat;
 }
 
 export async function playSequence(melodyNotes, recommendations, options = {}) {
@@ -190,9 +181,13 @@ export async function playSequence(melodyNotes, recommendations, options = {}) {
   const bpm = options.bpm || 96;
   const pattern = options.pattern || 'off';
   const startAt = ctx.currentTime + 0.08;
-  const beat = beatDuration(bpm);
-  scheduleChords(recommendations, startAt, bpm);
-  scheduleAccompaniment(recommendations, pattern, startAt, bpm);
+
+  // `off`는 실제로도 멜로디만 재생한다. 다른 스타일은 코드 기반 반주을 함께 스케줄한다.
+  if (pattern !== 'off') {
+    scheduleChords(recommendations, startAt, bpm);
+    scheduleAccompaniment(recommendations, pattern, startAt, bpm);
+  }
+
   const endAt = scheduleMelody(melodyNotes, startAt, bpm);
   const totalMs = Math.max(800, (endAt - startAt + 0.4) * 1000);
   if (options.onEnd) {
@@ -207,14 +202,13 @@ export function stopSequence() {
     try { node.stop && node.stop(); } catch (_) { /* noop */ }
   });
   activeNodes = [];
-  // 다음 재생 때 다시 true로
   setTimeout(() => { stopFlag = false; }, 50);
 }
 
 export function previewNote(pitch, octave, duration = 0.5) {
   ensureContext();
   if (ctx.state === 'suspended') ctx.resume();
-  const pc = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'].indexOf(pitch);
+  const pc = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'].indexOf(pitch);
   if (pc < 0) return;
   playTone(midiToFreq(midiOf(pc, octave)), ctx.currentTime + 0.02, duration, 'triangle', 0.45);
 }

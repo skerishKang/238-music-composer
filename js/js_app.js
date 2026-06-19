@@ -13,6 +13,14 @@ import { renderChordCandidates } from './js_chord_candidates.js';
 
 const SAMPLE_MELODY = 'C4:q E4:e G4:e | A4:q G4:e E4:e | F4:h D4:h | G4:q E4:e C4:e | D4:q F4:e A4:e | G4:h E4:h | C4:w';
 const BEATS_PER_BAR = 4;
+const ACCOMPANIMENT = {
+  off: { label: '멜로디만', hint: '반주 없이 멜로디만 먼저 들어봅니다.' },
+  block: { label: '코드', hint: '마디마다 코드를 길게 눌러 안정적으로 들려줍니다.' },
+  arpeggio: { label: '아르페지오', hint: '추천 코드를 잔잔한 피아노 반주로 들어봅니다.' },
+  pop8: { label: '팝 리듬', hint: '8비트 리듬으로 조금 더 또렷하게 들어봅니다.' },
+  waltz: { label: '발라드 3/4', hint: '3박 느낌의 발라드 반주입니다.' },
+  funk16: { label: '펑크 16비트', hint: '짧고 리듬감 있는 16비트 반주입니다.' },
+};
 
 const state = {
   notes: [],
@@ -20,7 +28,7 @@ const state = {
   chordCandidates: [],
   history: [],
   pattern: 'pop',
-  accompaniment: 'off',
+  accompaniment: 'arpeggio',
 };
 
 let pianoRef = null;
@@ -75,6 +83,28 @@ function makeNote({ pc, pitch, octave, duration, bar, beat }) {
   };
 }
 
+function setAccompaniment(pattern, options = {}) {
+  const { announce = true } = options;
+  const next = ACCOMPANIMENT[pattern] ? pattern : 'arpeggio';
+  state.accompaniment = next;
+
+  const select = $('patternSelect');
+  if (select && select.value !== next) {
+    select.value = next;
+  }
+
+  document.querySelectorAll('[data-accompaniment]').forEach((button) => {
+    const selected = button.dataset.accompaniment === next;
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  setText('accompanimentHint', ACCOMPANIMENT[next].hint);
+
+  if (announce) {
+    toast(`반주: ${ACCOMPANIMENT[next].label}`);
+  }
+}
+
 function pushNote(noteInput) {
   const match = noteInput.token.match(/^([A-G][#b]?)(\d)/i);
   const octave = match ? Number(match[2]) : 4;
@@ -93,6 +123,12 @@ function pushNote(noteInput) {
   state.history.push({ type: 'add', note });
   state.lastRecommendations = [];
   state.chordCandidates = [];
+  // 멜로디 변경 시 후보 drawer 닫기 (오래된 정보)
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = true;
+    drawer.open = false;
+  }
   textSource = 'piano';
   refreshMelodyUi();
   setText('resultSummary', '멜로디가 바뀌었습니다. AI 코드 추천을 다시 눌러보세요.');
@@ -102,10 +138,33 @@ function pushNote(noteInput) {
 function renderRecommendations() {
   renderChordStrip($('chordStrip'), state.lastRecommendations);
   renderMiniChords($('miniChords'), state.lastRecommendations);
-  renderChordCandidates($('chordCandidates'), state.chordCandidates, {
+  const hasCandidates = state.chordCandidates.some((list) => list && list.length);
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = !hasCandidates;
+    const meta = $('candidatesMeta');
+    if (meta) {
+      meta.textContent = hasCandidates ? `(${state.chordCandidates.length}마디)` : '';
+    }
+  }
+  renderChordCandidates($('chordCandidates'), hasCandidates ? state.chordCandidates : [], {
     selected: state.lastRecommendations,
     onSelect: chooseChordCandidate,
   });
+}
+
+function renderEmptyHint() {
+  const host = $('melodyScore');
+  const hint = $('emptyScoreHint');
+  if (!host || !hint) return;
+  const empty = state.notes.length === 0;
+  // 비어 있을 때: vex-host 안의 vex-empty 메시지 제거하고 중앙 안내 표시
+  hint.hidden = !empty;
+  if (empty) {
+    const vexEmpty = host.querySelector('.vex-empty');
+    if (vexEmpty) vexEmpty.remove();
+    // vexhost 자체를 깔끔하게 비우기 (VexFlow 가 그릴 host는 그대로 유지)
+  }
 }
 
 function refreshMelodyUi() {
@@ -117,6 +176,7 @@ function refreshMelodyUi() {
   }
   updateStats(state.notes, state.lastRecommendations);
   renderMelodyScore($('melodyScore'), state.notes);
+  renderEmptyHint();
   renderMiniMelody($('miniMelody'), state.notes);
   renderRecommendations();
 }
@@ -133,6 +193,7 @@ function syncFromText() {
   }
   updateStats(state.notes, state.lastRecommendations);
   renderMelodyScore($('melodyScore'), state.notes);
+  renderEmptyHint();
   renderMiniMelody($('miniMelody'), state.notes);
   renderRecommendations();
 }
@@ -157,6 +218,12 @@ function analyze() {
   const summary = `${root} ${mode === 'major' ? '장조' : '단조'} · ${bars.length}마디 분석 완료 · 평균 추천도 ${Math.round(avgConfidence * 100)}%`;
   setText('resultSummary', summary);
   renderRecommendations();
+  // 후보 drawer 펼치기
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = false;
+    drawer.open = true;
+  }
   updateStats(state.notes, state.lastRecommendations);
   toast('AI 코드 후보 추천 완료');
   return true;
@@ -248,8 +315,7 @@ async function play() {
   }
   const bpm = Number($('bpmInput').value) || 96;
   const pattern = state.accompaniment;
-  const labelMap = { off: '반주 없음', block: '블록 코드', arpeggio: '아르페지오', pop8: '팝 8비트', waltz: '발라드 3/4', funk16: '펑크 16비트' };
-  toast(`재생 시작 (${labelMap[pattern] || pattern})`);
+  toast(`재생 시작 (${ACCOMPANIMENT[pattern].label})`);
   await playSequence(state.notes, state.lastRecommendations, { bpm, pattern, onEnd: () => toast('재생 완료') });
 }
 
@@ -276,12 +342,18 @@ function clearMelody() {
   state.chordCandidates = [];
   textSource = 'piano';
   refreshMelodyUi();
-  setText('resultSummary', '건반을 눌러 멜로디를 쌓고, AI 코드 추천을 눌러보세요.');
+  setText('resultSummary', '아래 피아노를 눌러 멜로디를 입력하세요.');
   renderChordStrip($('chordStrip'), []);
   renderMelodyScore($('melodyScore'), []);
   renderMiniMelody($('miniMelody'), []);
   renderMiniChords($('miniChords'), []);
   renderChordCandidates($('chordCandidates'), [], {});
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = true;
+    drawer.open = false;
+  }
+  renderEmptyHint();
   updateStats([], []);
   toast('멜로디를 지웠습니다');
 }
@@ -337,18 +409,18 @@ function attachEvents() {
   $('melodyAiButton').addEventListener('click', appendSuggestedMelody);
   $('exportButton') && $('exportButton').addEventListener('click', exportPng);
 
+  document.querySelectorAll('[data-accompaniment]').forEach((button) => {
+    button.addEventListener('click', () => setAccompaniment(button.dataset.accompaniment));
+  });
+
   $('progressionSelect').addEventListener('change', (e) => {
     state.pattern = e.target.value;
   });
 
   const patternSelect = $('patternSelect');
   if (patternSelect) {
-    state.accompaniment = patternSelect.value || 'off';
-    patternSelect.addEventListener('change', (e) => {
-      state.accompaniment = e.target.value;
-      const labelMap = { off: '반주 끔', block: '블록 코드', arpeggio: '아르페지오', pop8: '팝 8비트', waltz: '발라드 3/4', funk16: '펑크 16비트' };
-      toast(`반주: ${labelMap[state.accompaniment] || state.accompaniment}`);
-    });
+    setAccompaniment(patternSelect.value || state.accompaniment, { announce: false });
+    patternSelect.addEventListener('change', (e) => setAccompaniment(e.target.value));
   }
 }
 
@@ -359,6 +431,13 @@ function init() {
   renderMiniMelody($('miniMelody'), []);
   renderMiniChords($('miniChords'), []);
   renderChordCandidates($('chordCandidates'), [], {});
+  // 첫 진입 시 drawer/hint 초기 상태
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = true;
+    drawer.open = false;
+  }
+  renderEmptyHint();
   updateStats([], []);
 }
 

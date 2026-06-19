@@ -3,17 +3,18 @@
 
 const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 export { SHARP_NAMES };
+
 const FLAT_TO_SHARP = {
   Db: 'C#', Eb: 'D#', Gb: 'F#', Ab: 'G#', Bb: 'A#',
   'C♭': 'B', 'F♭': 'E', 'B♭': 'A#', 'E♭': 'D#', 'A♭': 'G#',
 };
+
 const BLACK_KEYS = new Set(['C#', 'D#', 'F#', 'G#', 'A#']);
 export { BLACK_KEYS };
 
 const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
 const MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10];
 
-// 장조·단조의 7도 안에서 각 디그리(1~7)별 코드 품질과 로마자
 const DIATONIC = {
   major: [
     { quality: 'maj', roman: 'I' },
@@ -36,12 +37,12 @@ const DIATONIC = {
 };
 
 const PROGRESSION_PATTERNS = {
-  pop:     [0, 4, 5, 3],
-  ballad:  [0, 5, 2, 3],
-  jazz:    [1, 4, 0, 4],
-  minor:   [0, 5, 2, 6],
-  emo:     [5, 3, 0, 4],
-  loop:    [0, 5, 3, 4],
+  pop: [0, 4, 5, 3],
+  ballad: [0, 5, 2, 3],
+  jazz: [1, 4, 0, 4],
+  minor: [0, 5, 2, 6],
+  emo: [5, 3, 0, 4],
+  loop: [0, 5, 3, 4],
 };
 
 export const PROGRESSION_LABELS = {
@@ -70,18 +71,17 @@ export function noteName(pc) {
   return SHARP_NAMES[((pc % 12) + 12) % 12];
 }
 
-// 길이 표기(박자) → 4분음표 기준 길이
 export function durationValue(token) {
   if (!token) return 1;
-  const t = token.toLowerCase();
-  if (t === 'w') return 4;
-  if (t === 'h' || t === '2') return 2;
-  if (t === 'q' || t === '1') return 1;
-  if (t === 'e' || t === '8') return 0.5;
-  if (t === 's' || t === '16') return 0.25;
-  if (t === 't' || t === '32') return 0.125;
-  const n = Number(t);
-  return Number.isFinite(n) && n > 0 ? n : 1;
+  const value = token.toLowerCase();
+  if (value === 'w') return 4;
+  if (value === 'h' || value === '2') return 2;
+  if (value === 'q' || value === '1') return 1;
+  if (value === 'e' || value === '8') return 0.5;
+  if (value === 's' || value === '16') return 0.25;
+  if (value === 't' || value === '32') return 0.125;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 1;
 }
 
 export function formatDuration(value) {
@@ -96,93 +96,127 @@ export function formatDuration(value) {
 
 const NOTE_REGEX = /^([A-Ga-g])([#b♯♭]?)(\d)?(?::?(\d+(?:\.\d+)?)?([whqes]|16|32)?)?$/;
 
-// 텍스트 → {notes, errors, hasExplicitBars, beatLimit}
+function advanceAutomaticBar(position, duration) {
+  const nextBeat = position.beat + duration;
+  return {
+    bar: position.bar + Math.floor(nextBeat / 4),
+    beat: nextBeat % 4,
+  };
+}
+
+// 명시적 |가 하나라도 있으면 전체 입력을 명시적 마디 모드로 파싱한다.
+// 이전에는 첫 마디가 정확히 4박인 뒤 |가 나오면 자동 마디 증가와 | 증가가 중복됐다.
 export function parseMelody(text) {
   const errors = [];
   const notes = [];
   const tokens = (text || '')
     .replace(/\n/g, ' ')
     .split(/\s+/)
-    .map((t) => t.trim())
+    .map((token) => token.trim())
     .filter(Boolean);
+  const hasExplicitBars = tokens.includes('|');
   let bar = 1;
   let beatInBar = 0;
-  let hasExplicitBars = false;
 
   for (const raw of tokens) {
     if (raw === '|') {
-      hasExplicitBars = true;
       bar += 1;
       beatInBar = 0;
       continue;
     }
+
     const match = raw.match(NOTE_REGEX);
     if (!match) {
       if (raw === '-' || raw.toLowerCase() === 'rest' || raw === '0') {
         notes.push({ rest: true, duration: 1, bar, beat: beatInBar });
-        beatInBar += 1;
-        if (!hasExplicitBars && beatInBar >= 4) { bar += 1; beatInBar = 0; }
+        if (hasExplicitBars) {
+          beatInBar += 1;
+        } else {
+          const next = advanceAutomaticBar({ bar, beat: beatInBar }, 1);
+          bar = next.bar;
+          beatInBar = next.beat;
+        }
         continue;
       }
       errors.push(`인식할 수 없는 토큰: ${raw}`);
       continue;
     }
-    const [, letter, accidental, octaveStr, , dur] = match;
-    const acc = accidental === 'b' || accidental === '♭' ? 'b' : accidental === '#' || accidental === '♯' ? '#' : '';
-    let pitch = letter.toUpperCase() + acc;
+
+    const [, letter, accidental, octaveStr, , durationToken] = match;
+    const normalizedAccidental = accidental === 'b' || accidental === '♭'
+      ? 'b'
+      : accidental === '#' || accidental === '♯'
+        ? '#'
+        : '';
+    let pitch = letter.toUpperCase() + normalizedAccidental;
     if (FLAT_TO_SHARP[pitch]) pitch = FLAT_TO_SHARP[pitch];
     const pc = SHARP_NAMES.indexOf(pitch);
     if (pc < 0) {
       errors.push(`지원하지 않는 음: ${raw}`);
       continue;
     }
+
     const octave = octaveStr ? Number(octaveStr) : 4;
-    const midi = (octave + 1) * 12 + pc;
-    const duration = durationValue(dur);
-    notes.push({ token: `${pitch}${octave}:${formatDuration(duration)}`, pc, pitch, octave, midi, duration, bar, beat: beatInBar });
-    beatInBar += duration;
-    if (!hasExplicitBars && beatInBar >= 4) { bar += 1; beatInBar = 0; }
+    const duration = durationValue(durationToken);
+    notes.push({
+      token: `${pitch}${octave}:${formatDuration(duration)}`,
+      pc,
+      pitch,
+      octave,
+      midi: (octave + 1) * 12 + pc,
+      duration,
+      bar,
+      beat: beatInBar,
+    });
+
+    if (hasExplicitBars) {
+      beatInBar += duration;
+    } else {
+      const next = advanceAutomaticBar({ bar, beat: beatInBar }, duration);
+      bar = next.bar;
+      beatInBar = next.beat;
+    }
   }
 
   const maxBar = notes.length
-    ? notes.reduce((m, n) => Math.max(m, n.bar || 1), 1)
+    ? notes.reduce((max, note) => Math.max(max, note.bar || 1), 1)
     : (hasExplicitBars ? Math.max(1, bar - 1) : 1);
   return { notes, errors, hasExplicitBars, bars: maxBar };
 }
 
 export function groupByBar(notes) {
   const map = new Map();
-  for (const n of notes) {
-    const bar = n.bar || 1;
+  for (const note of notes) {
+    const bar = note.bar || 1;
     if (!map.has(bar)) map.set(bar, []);
-    map.get(bar).push(n);
+    map.get(bar).push(note);
   }
   if (map.size === 0) map.set(1, []);
-  const result = [];
+
   const maxBar = Math.max(...map.keys());
-  for (let i = 1; i <= maxBar; i += 1) {
-    result.push(map.get(i) || []);
+  const bars = [];
+  for (let bar = 1; bar <= maxBar; bar += 1) {
+    bars.push(map.get(bar) || []);
   }
-  return result;
+  return bars;
 }
 
-// 7개 디아토닉 코드 메타데이터 생성
 export function buildDiatonic(rootInput, mode) {
-  const root = rootPc(rootInput);
+  const tonic = rootPc(rootInput);
   const scale = mode === 'minor' ? MINOR_SCALE : MAJOR_SCALE;
-  const table = DIATONIC[mode];
-  return scale.map((interval, idx) => {
-    const rootPcValue = (root + interval) % 12;
-    const intervals = qualityToIntervals(table[idx].quality);
-    const notes = intervals.map((iv) => noteName((rootPcValue + iv) % 12));
+  const table = DIATONIC[mode] || DIATONIC.major;
+  return scale.map((interval, index) => {
+    const rootPcValue = (tonic + interval) % 12;
+    const quality = table[index].quality;
+    const intervals = qualityToIntervals(quality);
     return {
-      degree: idx + 1,
+      degree: index + 1,
       rootPc: rootPcValue,
       rootName: noteName(rootPcValue),
-      quality: table[idx].quality,
-      roman: table[idx].roman,
+      quality,
+      roman: table[index].roman,
       intervals,
-      notes,
+      notes: intervals.map((value) => noteName((rootPcValue + value) % 12)),
     };
   });
 }
@@ -207,20 +241,30 @@ export function formatChordName(chord) {
   return `${chord.rootName}${chordSuffix(chord.quality)}`;
 }
 
-function scoreChordForBar(barNotes, chord, idx, diatonic) {
-  const melodyPcs = barNotes.filter((n) => !n.rest).map((n) => n.pc);
+function positionBias(index, total, melodyPcs) {
+  const tonic = 0;
+  const dominant = 4;
+  let bias = 0;
+  if (index === tonic) bias += 1.2;
+  if (index === dominant) bias += 1.0;
+  if (index === total - 1 && melodyPcs.some((pc) => pc === index - 1)) bias += 0.6;
+  return bias;
+}
+
+function scoreChordForBar(barNotes, chord, index, diatonic) {
+  const melodyPcs = barNotes.filter((note) => !note.rest).map((note) => note.pc);
+  const chordPcs = new Set(chord.notes.map((name) => SHARP_NAMES.indexOf(name)));
+  const scaleRoots = new Set(diatonic.map((item) => item.rootPc));
   let score = 0;
   let matchCount = 0;
   let passingCount = 0;
-  const set = new Set(chord.notes.map((n) => SHARP_NAMES.indexOf(n)));
-  const scaleSet = new Set(diatonic.map((c) => c.rootPc));
 
   for (const pc of melodyPcs) {
-    if (set.has(pc)) {
+    if (chordPcs.has(pc)) {
       score += 5;
       matchCount += 1;
       if (pc === chord.rootPc) score += 2.5;
-    } else if (scaleSet.has(pc)) {
+    } else if (scaleRoots.has(pc)) {
       score += 1.6;
       passingCount += 1;
     } else {
@@ -228,45 +272,31 @@ function scoreChordForBar(barNotes, chord, idx, diatonic) {
     }
   }
 
-  score += positionBias(idx, diatonic.length, melodyPcs);
-  const denom = Math.max(1, melodyPcs.length * 7 + 4);
-  const confidence = Math.max(0.35, Math.min(0.98, 0.4 + score / denom));
+  score += positionBias(index, diatonic.length, melodyPcs);
+  const denominator = Math.max(1, melodyPcs.length * 7 + 4);
+  const confidence = Math.max(0.35, Math.min(0.98, 0.4 + score / denominator));
   return { chord, matchCount, passingCount, score, confidence };
 }
 
-export function recommendForBar(barNotes, diatonic) {
-  const melodyPcs = barNotes.filter((n) => !n.rest).map((n) => n.pc);
-  if (melodyPcs.length === 0) {
-    return pickFallback(diatonic, 0, 0);
-  }
-  return recommendTopForBar(barNotes, diatonic, 1)[0];
-}
-
-function positionBias(idx, total, melodyPcs) {
-  const dominant = 4; // V
-  const tonic = 0;
-  let bias = 0;
-  if (idx === tonic) bias += 1.2;
-  if (idx === dominant) bias += 1.0;
-  if (idx === total - 1 && melodyPcs.some((pc) => pc === (idx - 1))) bias += 0.6;
-  return bias;
-}
-
-function pickFallback(diatonic, idx, total) {
-  const fallbackIdx = [0, 5, 3, 4][idx % 4];
-  const chord = diatonic[fallbackIdx] || diatonic[0];
+function pickFallback(diatonic, index) {
+  const fallbackIndex = [0, 5, 3, 4][index % 4];
+  const chord = diatonic[fallbackIndex] || diatonic[0];
   return { chord, matchCount: 0, passingCount: 0, score: 0, confidence: 0.5 };
 }
 
 export function recommendTopForBar(barNotes, diatonic, limit = 3) {
-  const melodyPcs = barNotes.filter((n) => !n.rest).map((n) => n.pc);
+  const melodyPcs = barNotes.filter((note) => !note.rest).map((note) => note.pc);
   if (melodyPcs.length === 0) {
-    return [0, 5, 3].map((_, idx) => pickFallback(diatonic, idx, 3)).slice(0, limit);
+    return [0, 1, 2].map((index) => pickFallback(diatonic, index)).slice(0, limit);
   }
   return diatonic
-    .map((chord, idx) => scoreChordForBar(barNotes, chord, idx, diatonic))
-    .sort((a, b) => b.score - a.score)
+    .map((chord, index) => scoreChordForBar(barNotes, chord, index, diatonic))
+    .sort((left, right) => right.score - left.score)
     .slice(0, limit);
+}
+
+export function recommendForBar(barNotes, diatonic) {
+  return recommendTopForBar(barNotes, diatonic, 1)[0];
 }
 
 export function recommendTopAll(bars, diatonic, limit = 3) {
@@ -274,18 +304,16 @@ export function recommendTopAll(bars, diatonic, limit = 3) {
 }
 
 export function recommendAll(bars, diatonic) {
-  return bars.map((barNotes, i) => recommendForBar(barNotes, diatonic));
+  return bars.map((barNotes) => recommendForBar(barNotes, diatonic));
 }
 
 export function buildProgression(bars, diatonic, patternName) {
   const pattern = PROGRESSION_PATTERNS[patternName] || PROGRESSION_PATTERNS.pop;
-  return bars.map((barNotes, i) => {
-    const idx = pattern[i % pattern.length];
-    const chord = diatonic[idx] || diatonic[0];
-    const melodyPcs = barNotes.filter((n) => !n.rest).map((n) => n.pc);
-    const matchCount = chord.intervals
-      .map((iv) => (chord.rootPc + iv) % 12)
-      .filter((pc) => melodyPcs.includes(pc)).length;
+  return bars.map((barNotes, index) => {
+    const chord = diatonic[pattern[index % pattern.length]] || diatonic[0];
+    const melodyPcs = barNotes.filter((note) => !note.rest).map((note) => note.pc);
+    const chordPcs = chord.intervals.map((interval) => (chord.rootPc + interval) % 12);
+    const matchCount = chordPcs.filter((pc) => melodyPcs.includes(pc)).length;
     const passingCount = melodyPcs.length - matchCount;
     const confidence = melodyPcs.length === 0
       ? 0.55
@@ -307,11 +335,9 @@ export function explainMatch(chord, matchCount, passingCount) {
   return `${chord.roman} 진행의 텐션이 느껴지는 위치입니다. 멜로디에 따라 바꿔보세요.`;
 }
 
-// 코드 이름을 멜로디 텍스트에 추가 (예: "C4:q E4:q | G4:q" + " | C | G")
 export function buildMelodyText(notes) {
   if (!notes.length) return '';
-  const grouped = groupByBar(notes);
-  return grouped
-    .map((bar) => bar.map((n) => (n.rest ? '-' : n.token)).join(' '))
+  return groupByBar(notes)
+    .map((bar) => bar.map((note) => (note.rest ? '-' : note.token)).join(' '))
     .join(' | ');
 }
