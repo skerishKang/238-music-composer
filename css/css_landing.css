@@ -1,0 +1,134 @@
+.landing-body {
+  background:
+    radial-gradient(circle at 20% 15%, rgba(139, 92, 246, 0.32), transparent 32%),
+    radial-gradient(circle at 80% 5%, rgba(34, 211, 238, 0.22), transparent 30%),
+    linear-gradient(135deg, #070912 0%, #101728 55%, #080b14 100%);
+}
+
+.landing-shell {
+  width: min(960px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 80px 0 96px;
+  text-align: center;
+}
+
+.landing-hero {
+  margin-bottom: 72px;
+}
+
+.landing-hero h1 {
+  margin: 0 auto 22px;
+  max-width: 880px;
+  font-size: clamp(2.4rem, 6.5vw, 4.6rem);
+  letter-spacing: -0.06em;
+  line-height: 1.05;
+}
+
+.landing-copy {
+  max-width: 600px;
+  margin: 0 auto 36px;
+  color: var(--muted-strong);
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.cta-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  padding: 0 36px;
+  border-radius: 999px;
+  color: #07111f;
+  background: linear-gradient(135deg, var(--accent-2), #a78bfa);
+  font-weight: 900;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  box-shadow: 0 18px 40px rgba(34, 211, 238, 0.28);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 50px rgba(34, 211, 238, 0.32);
+}
+
+.cta-button:active {
+  transform: translateY(0);
+}
+
+.landing-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.step-card {
+  position: relative;
+  padding: 28px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    rgba(15, 23, 42, 0.7);
+  text-align: left;
+  backdrop-filter: blur(14px);
+}
+
+.step-num {
+  position: absolute;
+  top: -18px;
+  left: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  color: #07111f;
+  background: linear-gradient(135deg, var(--accent-2), #a78bfa);
+  font-weight: 900;
+  font-size: 1rem;
+  box-shadow: 0 8px 18px rgba(34, 211, 238, 0.32);
+}
+
+.step-card h2 {
+  margin: 12px 0 8px;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.step-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.landing-foot {
+  margin-top: 64px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.landing-foot p {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .landing-shell {
+    padding: 48px 0 64px;
+  }
+
+  .landing-hero {
+    margin-bottom: 48px;
+  }
+
+  .landing-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .cta-button {
+    width: 100%;
+  }
+}
