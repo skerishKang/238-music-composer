@@ -1,5 +1,24 @@
-// js_history.js — 멜로디 되돌리기·다시 실행 상태 관리
+// js_history.js — 멜로디 되돌리기·다시 실행
 // 500줄 이내 유지
+
+const HISTORY_LIMIT = 80;
+const PIANO_KEYS = '.piano-key, .piano-black';
+const ONE_STEP_ACTIONS = '#melodyAiButton, #clearMelodyButton, #sampleButton';
+const PIANO_SHORTCUTS = new Set(['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'w', 'e', 't', 'y', 'u', 'o', 'p']);
+
+const $ = (id) => document.getElementById(id);
+let undoStack = [];
+let redoStack = [];
+let baseline = '';
+let pendingSnapshot = null;
+let settleTimer = null;
+let toastTimer = null;
+let applyingHistory = false;
+
+function isTextField(target) {
+  return target instanceof HTMLElement
+    && (target.matches('input, textarea, select') || target.isContentEditable);
+}
 
 function setDisabled(button, disabled) {
   if (!button) return;
@@ -7,65 +26,148 @@ function setDisabled(button, disabled) {
   button.setAttribute('aria-disabled', String(disabled));
 }
 
-function isTextField(target) {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.matches('input, textarea, select') || target.isContentEditable;
+function updateControls() {
+  setDisabled($('undoButton'), undoStack.length === 0);
+  setDisabled($('redoButton'), redoStack.length === 0);
 }
 
-export function mountMelodyHistory({
-  undoButton,
-  redoButton,
-  getSnapshot,
-  restoreSnapshot,
-  limit = 80,
-}) {
-  const undoStack = [];
-  const redoStack = [];
+function showToast(message) {
+  const toast = $('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('show');
+  if (toastTimer) window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toast.classList.remove('show'), 2400);
+}
 
-  function updateControls() {
-    setDisabled(undoButton, undoStack.length === 0);
-    setDisabled(redoButton, redoStack.length === 0);
-  }
+function currentText() {
+  return $('melodyInput')?.value || '';
+}
 
-  function checkpoint() {
-    const snapshot = getSnapshot();
-    if (undoStack.at(-1) === snapshot) return false;
-    undoStack.push(snapshot);
-    if (undoStack.length > limit) undoStack.shift();
-    redoStack.length = 0;
-    updateControls();
-    return true;
-  }
+function pushUndo(snapshot) {
+  if (undoStack.at(-1) === snapshot) return;
+  undoStack.push(snapshot);
+  if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+  redoStack = [];
+}
 
-  function undo() {
-    if (!undoStack.length) return false;
-    const current = getSnapshot();
-    const previous = undoStack.pop();
-    if (redoStack.at(-1) !== current) redoStack.push(current);
-    restoreSnapshot(previous, 'undo');
-    updateControls();
-    return true;
-  }
-
-  function redo() {
-    if (!redoStack.length) return false;
-    const current = getSnapshot();
-    const next = redoStack.pop();
-    if (undoStack.at(-1) !== current) undoStack.push(current);
-    restoreSnapshot(next, 'redo');
-    updateControls();
-    return true;
-  }
-
-  undoButton?.addEventListener('click', undo);
-  redoButton?.addEventListener('click', redo);
-  document.addEventListener('keydown', (event) => {
-    if (event.defaultPrevented || event.isComposing || isTextField(event.target)) return;
-    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') return;
-    const handled = event.shiftKey ? redo() : undo();
-    if (handled) event.preventDefault();
-  });
-
+function commitPending() {
+  if (pendingSnapshot === null) return;
+  const next = currentText();
+  if (next !== pendingSnapshot) pushUndo(pendingSnapshot);
+  baseline = next;
+  pendingSnapshot = null;
   updateControls();
-  return { checkpoint, updateControls };
+}
+
+function scheduleCommit(delay = 0) {
+  if (settleTimer) window.clearTimeout(settleTimer);
+  settleTimer = window.setTimeout(commitPending, delay);
+}
+
+function beginChange(delay = 0) {
+  if (applyingHistory) return;
+  commitPending();
+  pendingSnapshot = baseline;
+  scheduleCommit(delay);
+}
+
+function beginTextChange() {
+  if (applyingHistory) return;
+  if (pendingSnapshot === null) pendingSnapshot = baseline;
+  scheduleCommit(320);
+}
+
+function applySnapshot(snapshot, direction) {
+  applyingHistory = true;
+  const input = $('melodyInput');
+  if (input) {
+    input.value = snapshot;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  baseline = snapshot;
+  pendingSnapshot = null;
+  const summary = $('resultSummary');
+  if (summary) {
+    summary.textContent = direction === 'undo'
+      ? '이전 멜로디로 되돌렸습니다.'
+      : '되돌린 멜로디를 다시 적용했습니다.';
+  }
+  showToast(direction === 'undo' ? '되돌리기' : '다시 실행');
+  window.setTimeout(() => { applyingHistory = false; }, 340);
+}
+
+function undo() {
+  commitPending();
+  if (!undoStack.length) return;
+  const current = currentText();
+  const previous = undoStack.pop();
+  if (redoStack.at(-1) !== current) redoStack.push(current);
+  applySnapshot(previous, 'undo');
+  updateControls();
+}
+
+function redo() {
+  commitPending();
+  if (!redoStack.length) return;
+  const current = currentText();
+  const next = redoStack.pop();
+  if (undoStack.at(-1) !== current) undoStack.push(current);
+  applySnapshot(next, 'redo');
+  updateControls();
+}
+
+function isPianoShortcut(event) {
+  return !event.ctrlKey && !event.metaKey && !event.altKey
+    && !isTextField(event.target) && PIANO_SHORTCUTS.has(event.key.toLowerCase());
+}
+
+function init() {
+  baseline = currentText();
+  updateControls();
+
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target.closest(PIANO_KEYS)) beginChange();
+  }, true);
+
+  document.addEventListener('click', (event) => {
+    const target = event.target.closest('button');
+    if (!target) return;
+    if (target.id === 'undoButton' || target.id === 'redoButton') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      target.id === 'undoButton' ? undo() : redo();
+      return;
+    }
+    if (target.matches(ONE_STEP_ACTIONS)) beginChange();
+  }, true);
+
+  $('melodyInput')?.addEventListener('input', beginTextChange);
+  $('projectImportInput')?.addEventListener('change', () => beginChange(500), true);
+
+  window.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented || event.isComposing) return;
+    const key = event.key.toLowerCase();
+    if ((event.ctrlKey || event.metaKey) && !isTextField(event.target)) {
+      if (key === 'z') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        event.shiftKey ? redo() : undo();
+        return;
+      }
+      if (key === 'y') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        redo();
+        return;
+      }
+    }
+    if (isPianoShortcut(event)) beginChange();
+  }, true);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
 }
