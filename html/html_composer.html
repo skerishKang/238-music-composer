@@ -118,6 +118,16 @@
         <button class="ghost-button" type="button" id="redoButton" disabled title="다시 실행 (Ctrl/⌘ + Shift + Z)">다시 실행</button>
         <button class="ghost-button danger-soft" type="button" id="clearMelodyButton">전체 지우기</button>
       </div>
+      <details class="manual-chord-drawer" id="manualChordDrawer">
+        <summary>마디 코드 직접 편집</summary>
+        <p class="muted" id="manualChordHint">코드 추천 또는 코드 진행 만들기 후 사용할 수 있어요.</p>
+        <div class="manual-chord-controls">
+          <label>마디 <select id="manualChordBar" disabled></select></label>
+          <label>루트 <select id="manualChordRoot" disabled></select></label>
+          <label>품질 <select id="manualChordQuality" disabled></select></label>
+          <button class="ghost-button" type="button" id="manualChordApply" disabled>직접 적용</button>
+        </div>
+      </details>
       <input id="projectImportInput" type="file" accept="application/json,.json" hidden />
       <details class="text-drawer">
         <summary>멜로디 텍스트 (편집 가능)</summary>
