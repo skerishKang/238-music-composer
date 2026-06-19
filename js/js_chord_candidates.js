@@ -28,7 +28,7 @@ export function renderChordCandidates(host, candidatesByBar, options = {}) {
   const { selected = [], onSelect } = options;
   const hasCandidates = Array.isArray(candidatesByBar) && candidatesByBar.some((list) => list && list.length);
   if (!hasCandidates) {
-    empty(host, 'AI 코드 추천을 누르면 마디별 코드 후보가 여기에 표시됩니다.');
+    host.innerHTML = '';
     return;
   }
 

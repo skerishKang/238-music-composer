@@ -123,6 +123,12 @@ function pushNote(noteInput) {
   state.history.push({ type: 'add', note });
   state.lastRecommendations = [];
   state.chordCandidates = [];
+  // 멜로디 변경 시 후보 drawer 닫기 (오래된 정보)
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = true;
+    drawer.open = false;
+  }
   textSource = 'piano';
   refreshMelodyUi();
   setText('resultSummary', '멜로디가 바뀌었습니다. AI 코드 추천을 다시 눌러보세요.');
@@ -132,10 +138,33 @@ function pushNote(noteInput) {
 function renderRecommendations() {
   renderChordStrip($('chordStrip'), state.lastRecommendations);
   renderMiniChords($('miniChords'), state.lastRecommendations);
-  renderChordCandidates($('chordCandidates'), state.chordCandidates, {
+  const hasCandidates = state.chordCandidates.some((list) => list && list.length);
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = !hasCandidates;
+    const meta = $('candidatesMeta');
+    if (meta) {
+      meta.textContent = hasCandidates ? `(${state.chordCandidates.length}마디)` : '';
+    }
+  }
+  renderChordCandidates($('chordCandidates'), hasCandidates ? state.chordCandidates : [], {
     selected: state.lastRecommendations,
     onSelect: chooseChordCandidate,
   });
+}
+
+function renderEmptyHint() {
+  const host = $('melodyScore');
+  const hint = $('emptyScoreHint');
+  if (!host || !hint) return;
+  const empty = state.notes.length === 0;
+  // 비어 있을 때: vex-host 안의 vex-empty 메시지 제거하고 중앙 안내 표시
+  hint.hidden = !empty;
+  if (empty) {
+    const vexEmpty = host.querySelector('.vex-empty');
+    if (vexEmpty) vexEmpty.remove();
+    // vexhost 자체를 깔끔하게 비우기 (VexFlow 가 그릴 host는 그대로 유지)
+  }
 }
 
 function refreshMelodyUi() {
@@ -147,6 +176,7 @@ function refreshMelodyUi() {
   }
   updateStats(state.notes, state.lastRecommendations);
   renderMelodyScore($('melodyScore'), state.notes);
+  renderEmptyHint();
   renderMiniMelody($('miniMelody'), state.notes);
   renderRecommendations();
 }
@@ -163,6 +193,7 @@ function syncFromText() {
   }
   updateStats(state.notes, state.lastRecommendations);
   renderMelodyScore($('melodyScore'), state.notes);
+  renderEmptyHint();
   renderMiniMelody($('miniMelody'), state.notes);
   renderRecommendations();
 }
@@ -187,6 +218,12 @@ function analyze() {
   const summary = `${root} ${mode === 'major' ? '장조' : '단조'} · ${bars.length}마디 분석 완료 · 평균 추천도 ${Math.round(avgConfidence * 100)}%`;
   setText('resultSummary', summary);
   renderRecommendations();
+  // 후보 drawer 펼치기
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = false;
+    drawer.open = true;
+  }
   updateStats(state.notes, state.lastRecommendations);
   toast('AI 코드 후보 추천 완료');
   return true;
@@ -305,12 +342,18 @@ function clearMelody() {
   state.chordCandidates = [];
   textSource = 'piano';
   refreshMelodyUi();
-  setText('resultSummary', '건반을 눌러 멜로디를 쌓고, AI 코드 추천을 눌러보세요.');
+  setText('resultSummary', '아래 피아노를 눌러 멜로디를 입력하세요.');
   renderChordStrip($('chordStrip'), []);
   renderMelodyScore($('melodyScore'), []);
   renderMiniMelody($('miniMelody'), []);
   renderMiniChords($('miniChords'), []);
   renderChordCandidates($('chordCandidates'), [], {});
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = true;
+    drawer.open = false;
+  }
+  renderEmptyHint();
   updateStats([], []);
   toast('멜로디를 지웠습니다');
 }
@@ -388,6 +431,13 @@ function init() {
   renderMiniMelody($('miniMelody'), []);
   renderMiniChords($('miniChords'), []);
   renderChordCandidates($('chordCandidates'), [], {});
+  // 첫 진입 시 drawer/hint 초기 상태
+  const drawer = $('candidatesDrawer');
+  if (drawer) {
+    drawer.hidden = true;
+    drawer.open = false;
+  }
+  renderEmptyHint();
   updateStats([], []);
 }
 
