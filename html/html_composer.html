@@ -34,6 +34,16 @@
         <button class="secondary-button hero-action" type="button" id="playButton">▶ 들어보기</button>
         <button class="secondary-button hero-action" type="button" id="melodyAiButton">AI 멜로디 추천</button>
       </div>
+      <div class="quick-accompaniment" aria-label="빠른 반주 선택">
+        <span class="quick-accompaniment-label">반주 스타일</span>
+        <div class="quick-accompaniment-options" role="group" aria-label="반주 스타일 선택">
+          <button class="quick-accompaniment-button" type="button" data-accompaniment="off" aria-pressed="false">멜로디만</button>
+          <button class="quick-accompaniment-button" type="button" data-accompaniment="block" aria-pressed="false">코드</button>
+          <button class="quick-accompaniment-button is-selected" type="button" data-accompaniment="arpeggio" aria-pressed="true">아르페지오</button>
+          <button class="quick-accompaniment-button" type="button" data-accompaniment="pop8" aria-pressed="false">팝 리듬</button>
+        </div>
+        <span class="quick-accompaniment-help" id="accompanimentHint">추천 코드를 잔잔한 피아노 반주로 들어봅니다.</span>
+      </div>
       <div class="composer-utility-buttons" aria-label="보조 버튼">
         <button class="ghost-button" type="button" id="progressionButton">코드 진행 만들기</button>
         <button class="ghost-button" type="button" id="stopButton">정지</button>
@@ -107,7 +117,7 @@
           <select id="patternSelect">
             <option value="off">반주 끄기</option>
             <option value="block">블록 코드</option>
-            <option value="arpeggio">아르페지오</option>
+            <option value="arpeggio" selected>아르페지오</option>
             <option value="pop8">팝 8비트</option>
             <option value="waltz">발라드 3/4</option>
             <option value="funk16">펑크 16비트</option>
