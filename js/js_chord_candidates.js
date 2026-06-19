@@ -58,6 +58,8 @@ export function renderChordCandidates(host, candidatesByBar, options = {}) {
       button.className = `chord-candidate${sameChord(rec, selected[barIndex]) ? ' is-selected' : ''}`;
       button.dataset.barIndex = String(barIndex);
       button.dataset.candidateIndex = String(candidateIndex);
+      button.dataset.chordRootPc = String(rec.chord.rootPc);
+      button.dataset.chordQuality = rec.chord.quality;
 
       const name = document.createElement('span');
       name.className = 'candidate-name';
