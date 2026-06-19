@@ -111,9 +111,12 @@
         <button class="ghost-button" type="button" id="progressionButton">코드 진행 만들기</button>
         <button class="ghost-button" type="button" id="stopButton">정지</button>
         <button class="ghost-button" type="button" id="sampleButton">예시 멜로디</button>
+        <button class="ghost-button" type="button" id="projectExportButton">프로젝트 저장</button>
+        <button class="ghost-button" type="button" id="projectImportButton">프로젝트 불러오기</button>
         <button class="ghost-button" type="button" id="undoButton">한 음 되돌리기</button>
         <button class="ghost-button danger-soft" type="button" id="clearMelodyButton">전체 지우기</button>
       </div>
+      <input id="projectImportInput" type="file" accept="application/json,.json" hidden />
       <details class="text-drawer">
         <summary>멜로디 텍스트 (편집 가능)</summary>
         <textarea id="melodyInput" spellcheck="false" rows="3" placeholder="예: C4:q E4:q G4:q | A4:h C5:q"></textarea>
@@ -127,5 +130,6 @@
   <script type="module" src="../js/js_app.js"></script>
   <script type="module" src="../js/js_empty_state_draft.js"></script>
   <script type="module" src="../js/js_autosave.js"></script>
+  <script type="module" src="../js/js_project_file.js"></script>
 </body>
 </html>
