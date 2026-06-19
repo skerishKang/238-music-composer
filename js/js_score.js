@@ -63,7 +63,7 @@ export function renderMelodyScore(host, notes, options = {}) {
     const staveNotes = [];
     barNotes.forEach((note) => {
       if (note.rest) {
-        staveNotes.push(new StaveNote({ keys: ['b/4'], duration: 'qr' }));
+        staveNotes.push(new StaveNote({ keys: ['b/4'], duration: `${vexDuration(note.duration)}r` }));
         return;
       }
       const key = `${note.pitch.toLowerCase().replace('b', 'b')}/${note.octave}`;

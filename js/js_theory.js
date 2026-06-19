@@ -95,6 +95,7 @@ export function formatDuration(value) {
 }
 
 const NOTE_REGEX = /^([A-Ga-g])([#b♯♭]?)(\d)?(?::?(\d+(?:\.\d+)?)?([whqes]|16|32)?)?$/;
+const REST_REGEX = /^(?:-|rest|0)(?::(\d+(?:\.\d+)?)?([whqes]|16|32)?)?$/i;
 
 function advanceAutomaticBar(position, duration) {
   const nextBeat = position.beat + duration;
@@ -102,6 +103,17 @@ function advanceAutomaticBar(position, duration) {
     bar: position.bar + Math.floor(nextBeat / 4),
     beat: nextBeat % 4,
   };
+}
+
+function advancePosition(position, duration, hasExplicitBars) {
+  if (hasExplicitBars) {
+    return { bar: position.bar, beat: position.beat + duration };
+  }
+  return advanceAutomaticBar(position, duration);
+}
+
+function restToken(duration) {
+  return duration === 1 ? '-' : `-:${formatDuration(duration)}`;
 }
 
 // 명시적 |가 하나라도 있으면 전체 입력을 명시적 마디 모드로 파싱한다.
@@ -125,24 +137,30 @@ export function parseMelody(text) {
       continue;
     }
 
+    const restMatch = raw.match(REST_REGEX);
+    if (restMatch) {
+      const [, numericDuration, durationToken] = restMatch;
+      const duration = durationValue(durationToken || numericDuration);
+      notes.push({
+        rest: true,
+        token: restToken(duration),
+        duration,
+        bar,
+        beat: beatInBar,
+      });
+      const next = advancePosition({ bar, beat: beatInBar }, duration, hasExplicitBars);
+      bar = next.bar;
+      beatInBar = next.beat;
+      continue;
+    }
+
     const match = raw.match(NOTE_REGEX);
     if (!match) {
-      if (raw === '-' || raw.toLowerCase() === 'rest' || raw === '0') {
-        notes.push({ rest: true, duration: 1, bar, beat: beatInBar });
-        if (hasExplicitBars) {
-          beatInBar += 1;
-        } else {
-          const next = advanceAutomaticBar({ bar, beat: beatInBar }, 1);
-          bar = next.bar;
-          beatInBar = next.beat;
-        }
-        continue;
-      }
       errors.push(`인식할 수 없는 토큰: ${raw}`);
       continue;
     }
 
-    const [, letter, accidental, octaveStr, , durationToken] = match;
+    const [, letter, accidental, octaveStr, numericDuration, durationToken] = match;
     const normalizedAccidental = accidental === 'b' || accidental === '♭'
       ? 'b'
       : accidental === '#' || accidental === '♯'
@@ -157,7 +175,7 @@ export function parseMelody(text) {
     }
 
     const octave = octaveStr ? Number(octaveStr) : 4;
-    const duration = durationValue(durationToken);
+    const duration = durationValue(durationToken || numericDuration);
     notes.push({
       token: `${pitch}${octave}:${formatDuration(duration)}`,
       pc,
@@ -169,13 +187,9 @@ export function parseMelody(text) {
       beat: beatInBar,
     });
 
-    if (hasExplicitBars) {
-      beatInBar += duration;
-    } else {
-      const next = advanceAutomaticBar({ bar, beat: beatInBar }, duration);
-      bar = next.bar;
-      beatInBar = next.beat;
-    }
+    const next = advancePosition({ bar, beat: beatInBar }, duration, hasExplicitBars);
+    bar = next.bar;
+    beatInBar = next.beat;
   }
 
   const maxBar = notes.length
@@ -338,6 +352,6 @@ export function explainMatch(chord, matchCount, passingCount) {
 export function buildMelodyText(notes) {
   if (!notes.length) return '';
   return groupByBar(notes)
-    .map((bar) => bar.map((note) => (note.rest ? '-' : note.token)).join(' '))
+    .map((bar) => bar.map((note) => (note.rest ? restToken(note.duration) : note.token)).join(' '))
     .join(' | ');
 }
