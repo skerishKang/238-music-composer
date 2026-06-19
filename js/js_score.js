@@ -4,6 +4,7 @@
 import { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } from 'https://cdn.jsdelivr.net/npm/vexflow@4.2.5/+esm';
 import { groupByBar } from './js_theory.js';
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
 const DURATION_MAP = {
   4: 'w',
   2: 'h',
@@ -181,7 +182,101 @@ function chordSuffixForUi(quality) {
   return '';
 }
 
-// PNG 다운로드 — 현재 멜로디 호스트의 SVG를 추출
+function svgNode(name, attrs = {}, text = '') {
+  const node = document.createElementNS(SVG_NS, name);
+  Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
+  if (text) node.textContent = text;
+  return node;
+}
+
+function svgDimension(svg, name, fallback) {
+  const attribute = Number.parseFloat(svg.getAttribute(name));
+  if (Number.isFinite(attribute) && attribute > 0) return attribute;
+  const viewBox = svg.viewBox?.baseVal;
+  const viewBoxValue = viewBox && name === 'width' ? viewBox.width : viewBox?.height;
+  return Number.isFinite(viewBoxValue) && viewBoxValue > 0 ? viewBoxValue : fallback;
+}
+
+function scoreMetadata(options) {
+  const mode = options.mode === 'minor' ? '단조' : options.mode === 'major' ? '장조' : '';
+  return [
+    options.root && mode ? `${options.root} ${mode}` : options.root,
+    options.bpm ? `${options.bpm} BPM` : '',
+    options.progression ? `${options.progression} 진행` : '',
+  ].filter(Boolean).join(' · ');
+}
+
+function addChordLegend(svg, recommendations, width, startY) {
+  const cellWidth = 142;
+  const padding = 26;
+  const columns = Math.max(1, Math.floor((width - padding * 2) / cellWidth));
+  recommendations.forEach((rec, index) => {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const x = padding + column * cellWidth;
+    const y = startY + row * 28;
+    const chord = rec.chord;
+    const label = `${index + 1}마디 · ${chord.rootName}${chordSuffixForUi(chord.quality)} · ${chord.roman}`;
+    const group = svgNode('g', { transform: `translate(${x} ${y})` });
+    group.appendChild(svgNode('rect', {
+      x: 0, y: -17, width: cellWidth - 8, height: 22, rx: 5,
+      fill: '#eef2ff', stroke: '#c7d2fe', 'stroke-width': 1,
+    }));
+    group.appendChild(svgNode('text', {
+      x: 8, y: -2, fill: '#3730a3', 'font-size': 11, 'font-family': 'Arial, sans-serif', 'font-weight': 700,
+    }, label));
+    svg.appendChild(group);
+  });
+  return Math.ceil(recommendations.length / columns) * 28;
+}
+
+// 현재 보이는 멜로디 SVG와 실제 선택된 코드를 하나의 독립 SVG로 내보낸다.
+export function exportCompleteScoreSvg(host, recommendations, options = {}) {
+  const source = host?.querySelector('svg');
+  if (!source) return null;
+
+  const sourceWidth = svgDimension(source, 'width', 800);
+  const sourceHeight = svgDimension(source, 'height', 200);
+  const width = Math.max(620, sourceWidth);
+  const choices = Array.isArray(recommendations) ? recommendations.filter((rec) => rec?.chord) : [];
+  const legendRows = Math.max(1, Math.ceil(choices.length / Math.max(1, Math.floor((width - 52) / 142))));
+  const headerHeight = 76 + legendRows * 28;
+  const height = headerHeight + sourceHeight + 20;
+  const output = svgNode('svg', {
+    xmlns: SVG_NS,
+    width,
+    height,
+    viewBox: `0 0 ${width} ${height}`,
+    role: 'img',
+    'aria-label': '238 Music Composer 완성 악보',
+  });
+
+  output.appendChild(svgNode('rect', { x: 0, y: 0, width, height, fill: '#ffffff' }));
+  output.appendChild(svgNode('text', {
+    x: 26, y: 30, fill: '#111827', 'font-size': 22, 'font-family': 'Arial, sans-serif', 'font-weight': 800,
+  }, options.title || '238 Music Composer'));
+  output.appendChild(svgNode('text', {
+    x: 26, y: 52, fill: '#4b5563', 'font-size': 12, 'font-family': 'Arial, sans-serif',
+  }, scoreMetadata(options) || '멜로디와 선택 코드 진행'));
+
+  if (choices.length) {
+    addChordLegend(output, choices, width, 82);
+  } else {
+    output.appendChild(svgNode('text', {
+      x: 26, y: 82, fill: '#6b7280', 'font-size': 12, 'font-family': 'Arial, sans-serif',
+    }, '선택된 코드 진행 없음'));
+  }
+
+  const scoreLayer = svgNode('g', { transform: `translate(0 ${headerHeight})` });
+  Array.from(source.childNodes).forEach((child) => scoreLayer.appendChild(child.cloneNode(true)));
+  output.appendChild(scoreLayer);
+
+  const xml = new XMLSerializer().serializeToString(output);
+  const blob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+  return URL.createObjectURL(blob);
+}
+
+// 기존 멜로디 전용 SVG 추출 함수는 하위 호출 호환을 위해 유지한다.
 export function exportMelodyPng(host) {
   const svg = host.querySelector('svg');
   if (!svg) return null;
