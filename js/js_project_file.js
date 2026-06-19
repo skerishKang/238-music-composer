@@ -92,10 +92,11 @@ function normalizeChordChoice(choice, bar, bars) {
 }
 
 function normalizeSelectedChordChoices(value, bars) {
-  if (value === undefined || value.length === 0) return [];
+  if (value === undefined) return [];
   if (!Array.isArray(value)) {
     throw new Error('저장된 코드 선택 정보를 확인해 주세요.');
   }
+  if (value.length === 0) return [];
 
   const legacyDense = value.length === bars && value.every((choice) => choice && choice.bar === undefined);
   const choices = legacyDense
