@@ -219,6 +219,16 @@
   border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
+.settings-utility .ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
+.settings-utility .ghost-button:disabled:hover {
+  transform: none;
+}
+
 .danger-soft {
   color: #fecaca;
   border-color: rgba(248, 113, 113, 0.28);
