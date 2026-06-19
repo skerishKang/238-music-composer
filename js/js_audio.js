@@ -6,7 +6,6 @@ import { groupByBar } from './js_theory.js';
 let ctx = null;
 let masterGain = null;
 let activeNodes = [];
-let stopFlag = false;
 
 const PEAK_BASS = 0.32;
 const PEAK_CHORD = 0.22;
@@ -96,7 +95,6 @@ function envelope(node, when, duration, peak = 0.6) {
 }
 
 function playTone(freq, when, duration, type = 'triangle', peak = 0.5) {
-  if (stopFlag) return;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = type;
@@ -108,12 +106,16 @@ function playTone(freq, when, duration, type = 'triangle', peak = 0.5) {
   osc.stop(when + duration + 0.4);
   activeNodes.push(osc, gain);
   osc.onended = () => {
-    activeNodes = activeNodes.filter((n) => n !== osc && n !== gain);
+    activeNodes = activeNodes.filter((node) => node !== osc && node !== gain);
   };
 }
 
 function beatDuration(bpm) {
   return 60 / Math.max(40, Math.min(220, bpm));
+}
+
+function noteBeats(note) {
+  return Math.max(0, Number(note?.duration) || 0);
 }
 
 function scheduleMelody(melodyNotes, startAt, bpm) {
@@ -123,13 +125,15 @@ function scheduleMelody(melodyNotes, startAt, bpm) {
   let time = startAt;
   grouped.forEach((barNotes) => {
     barNotes.forEach((note) => {
-      if (note.rest) return;
-      const dur = note.duration * beat;
-      const freq = midiToFreq(midiOf(note.pc, note.octave));
-      playTone(freq, time, dur * 0.95, 'triangle', 0.42);
+      const beats = noteBeats(note);
+      const dur = beats * beat;
+      if (!note.rest) {
+        const freq = midiToFreq(midiOf(note.pc, note.octave));
+        playTone(freq, time, dur * 0.95, 'triangle', 0.42);
+      }
       time += dur;
     });
-    const used = barNotes.reduce((sum, note) => sum + (note.rest ? 0 : note.duration), 0);
+    const used = barNotes.reduce((sum, note) => sum + noteBeats(note), 0);
     if (used < 4) {
       time += (4 - used) * beat;
     } else if (used > 4) {
@@ -197,12 +201,10 @@ export async function playSequence(melodyNotes, recommendations, options = {}) {
 }
 
 export function stopSequence() {
-  stopFlag = true;
   activeNodes.forEach((node) => {
     try { node.stop && node.stop(); } catch (_) { /* noop */ }
   });
   activeNodes = [];
-  setTimeout(() => { stopFlag = false; }, 50);
 }
 
 export function previewNote(pitch, octave, duration = 0.5) {
