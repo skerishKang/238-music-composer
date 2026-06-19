@@ -122,13 +122,20 @@ function isPianoShortcut(event) {
     && !isTextField(event.target) && PIANO_SHORTCUTS.has(event.key.toLowerCase());
 }
 
+function isPianoEvent(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  return Boolean(target?.closest(PIANO_KEYS));
+}
+
 function init() {
   baseline = currentText();
   updateControls();
 
   document.addEventListener('pointerdown', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target?.closest(PIANO_KEYS)) beginChange();
+    if (isPianoEvent(event)) beginChange();
+  }, true);
+  document.addEventListener('dblclick', (event) => {
+    if (isPianoEvent(event)) beginChange();
   }, true);
 
   document.addEventListener('click', (event) => {
