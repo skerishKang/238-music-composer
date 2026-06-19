@@ -95,16 +95,33 @@ function setControlValue(id, value) {
   control.value = String(value);
 }
 
-function finishRestore(saved) {
+function matchesSavedProject(saved) {
+  return [
+    ['melodyInput', saved.melody],
+    ['rootSelect', saved.root],
+    ['modeSelect', saved.mode],
+    ['bpmInput', saved.bpm],
+    ['progressionSelect', saved.progression],
+    ['patternSelect', saved.accompaniment],
+  ].every(([id, value]) => String($(id)?.value ?? '') === String(value));
+}
+
+function finishRestore(saved, persistCurrent = false) {
   restoring = false;
+  if (restoreTimer) window.clearTimeout(restoreTimer);
+  restoreTimer = null;
+  if (persistCurrent) {
+    lastSnapshot = '';
+    saveNow();
+    return;
+  }
   lastSnapshot = snapshotProject();
   setStatus(saved.melody.trim() ? '저장된 작업 불러옴' : '저장된 설정 불러옴', 'restored');
 }
 
 function restoreSelectedChordChoices(saved, choices, attempt = 0) {
-  const input = $('melodyInput');
-  if (!input || input.value !== saved.melody) {
-    finishRestore(saved);
+  if (!matchesSavedProject(saved)) {
+    finishRestore(saved, true);
     return;
   }
 
