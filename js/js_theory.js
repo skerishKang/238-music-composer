@@ -207,46 +207,39 @@ export function formatChordName(chord) {
   return `${chord.rootName}${chordSuffix(chord.quality)}`;
 }
 
+function scoreChordForBar(barNotes, chord, idx, diatonic) {
+  const melodyPcs = barNotes.filter((n) => !n.rest).map((n) => n.pc);
+  let score = 0;
+  let matchCount = 0;
+  let passingCount = 0;
+  const set = new Set(chord.notes.map((n) => SHARP_NAMES.indexOf(n)));
+  const scaleSet = new Set(diatonic.map((c) => c.rootPc));
+
+  for (const pc of melodyPcs) {
+    if (set.has(pc)) {
+      score += 5;
+      matchCount += 1;
+      if (pc === chord.rootPc) score += 2.5;
+    } else if (scaleSet.has(pc)) {
+      score += 1.6;
+      passingCount += 1;
+    } else {
+      score -= 2.2;
+    }
+  }
+
+  score += positionBias(idx, diatonic.length, melodyPcs);
+  const denom = Math.max(1, melodyPcs.length * 7 + 4);
+  const confidence = Math.max(0.35, Math.min(0.98, 0.4 + score / denom));
+  return { chord, matchCount, passingCount, score, confidence };
+}
+
 export function recommendForBar(barNotes, diatonic) {
   const melodyPcs = barNotes.filter((n) => !n.rest).map((n) => n.pc);
   if (melodyPcs.length === 0) {
     return pickFallback(diatonic, 0, 0);
   }
-
-  let best = null;
-  let bestScore = -Infinity;
-
-  diatonic.forEach((chord, idx) => {
-    let score = 0;
-    let matchCount = 0;
-    let passingCount = 0;
-    const set = new Set(chord.notes.map((n) => SHARP_NAMES.indexOf(n)));
-    const scaleSet = new Set(diatonic.map((c) => c.rootPc));
-
-    for (const pc of melodyPcs) {
-      if (set.has(pc)) {
-        score += 5;
-        matchCount += 1;
-        if (pc === chord.rootPc) score += 2.5;
-      } else if (scaleSet.has(pc)) {
-        score += 1.6;
-        passingCount += 1;
-      } else {
-        score -= 2.2;
-      }
-    }
-
-    // 진행에서의 자연스러운 위치 가중치
-    score += positionBias(idx, diatonic.length, melodyPcs);
-    if (score > bestScore) {
-      bestScore = score;
-      best = { chord, matchCount, passingCount, score };
-    }
-  });
-
-  const denom = melodyPcs.length * 7 + 4;
-  const confidence = Math.max(0.35, Math.min(0.98, 0.4 + best.score / denom));
-  return { ...best, confidence };
+  return recommendTopForBar(barNotes, diatonic, 1)[0];
 }
 
 function positionBias(idx, total, melodyPcs) {
@@ -263,6 +256,21 @@ function pickFallback(diatonic, idx, total) {
   const fallbackIdx = [0, 5, 3, 4][idx % 4];
   const chord = diatonic[fallbackIdx] || diatonic[0];
   return { chord, matchCount: 0, passingCount: 0, score: 0, confidence: 0.5 };
+}
+
+export function recommendTopForBar(barNotes, diatonic, limit = 3) {
+  const melodyPcs = barNotes.filter((n) => !n.rest).map((n) => n.pc);
+  if (melodyPcs.length === 0) {
+    return [0, 5, 3].map((_, idx) => pickFallback(diatonic, idx, 3)).slice(0, limit);
+  }
+  return diatonic
+    .map((chord, idx) => scoreChordForBar(barNotes, chord, idx, diatonic))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+export function recommendTopAll(bars, diatonic, limit = 3) {
+  return bars.map((barNotes) => recommendTopForBar(barNotes, diatonic, limit));
 }
 
 export function recommendAll(bars, diatonic) {

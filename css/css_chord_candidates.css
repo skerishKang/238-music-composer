@@ -1,0 +1,118 @@
+.chord-candidates {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.chord-candidates-empty {
+  padding: 10px 12px;
+  border: 1px dashed rgba(148, 163, 184, 0.32);
+  border-radius: 12px;
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.08);
+  font-size: 0.9rem;
+}
+
+.chord-candidates-title {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: #f8fafc;
+}
+
+.chord-candidates-title strong {
+  font-size: 0.96rem;
+  letter-spacing: -0.02em;
+}
+
+.chord-candidates-title span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.chord-candidate-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.chord-candidate-bar-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 12px;
+  color: var(--muted-strong);
+  background: rgba(34, 211, 238, 0.08);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.chord-candidate-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.chord-candidate {
+  display: grid;
+  gap: 4px;
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 14px;
+  color: #e5edf8;
+  background: rgba(15, 23, 42, 0.25);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.chord-candidate:hover {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.10);
+  transform: translateY(-1px);
+}
+
+.chord-candidate.is-selected {
+  border-color: rgba(139, 92, 246, 0.75);
+  background: rgba(139, 92, 246, 0.20);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.20);
+}
+
+.candidate-name {
+  color: #ffffff;
+  font-size: 1.08rem;
+  font-weight: 950;
+  letter-spacing: -0.03em;
+}
+
+.candidate-meta {
+  color: var(--accent-2);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.candidate-why {
+  color: var(--muted-strong);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .chord-candidate-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chord-candidate-bar-label {
+    min-height: 32px;
+    justify-content: flex-start;
+    padding: 0 12px;
+  }
+
+  .chord-candidate-list {
+    grid-template-columns: 1fr;
+  }
+}
