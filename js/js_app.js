@@ -13,6 +13,14 @@ import { renderChordCandidates } from './js_chord_candidates.js';
 
 const SAMPLE_MELODY = 'C4:q E4:e G4:e | A4:q G4:e E4:e | F4:h D4:h | G4:q E4:e C4:e | D4:q F4:e A4:e | G4:h E4:h | C4:w';
 const BEATS_PER_BAR = 4;
+const ACCOMPANIMENT = {
+  off: { label: '멜로디만', hint: '반주 없이 멜로디만 먼저 들어봅니다.' },
+  block: { label: '코드', hint: '마디마다 코드를 길게 눌러 안정적으로 들려줍니다.' },
+  arpeggio: { label: '아르페지오', hint: '추천 코드를 잔잔한 피아노 반주로 들어봅니다.' },
+  pop8: { label: '팝 리듬', hint: '8비트 리듬으로 조금 더 또렷하게 들어봅니다.' },
+  waltz: { label: '발라드 3/4', hint: '3박 느낌의 발라드 반주입니다.' },
+  funk16: { label: '펑크 16비트', hint: '짧고 리듬감 있는 16비트 반주입니다.' },
+};
 
 const state = {
   notes: [],
@@ -20,7 +28,7 @@ const state = {
   chordCandidates: [],
   history: [],
   pattern: 'pop',
-  accompaniment: 'off',
+  accompaniment: 'arpeggio',
 };
 
 let pianoRef = null;
@@ -73,6 +81,28 @@ function makeNote({ pc, pitch, octave, duration, bar, beat }) {
     bar: bar || 1,
     beat: normalizeBeat(beat),
   };
+}
+
+function setAccompaniment(pattern, options = {}) {
+  const { announce = true } = options;
+  const next = ACCOMPANIMENT[pattern] ? pattern : 'arpeggio';
+  state.accompaniment = next;
+
+  const select = $('patternSelect');
+  if (select && select.value !== next) {
+    select.value = next;
+  }
+
+  document.querySelectorAll('[data-accompaniment]').forEach((button) => {
+    const selected = button.dataset.accompaniment === next;
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  setText('accompanimentHint', ACCOMPANIMENT[next].hint);
+
+  if (announce) {
+    toast(`반주: ${ACCOMPANIMENT[next].label}`);
+  }
 }
 
 function pushNote(noteInput) {
@@ -248,8 +278,7 @@ async function play() {
   }
   const bpm = Number($('bpmInput').value) || 96;
   const pattern = state.accompaniment;
-  const labelMap = { off: '반주 없음', block: '블록 코드', arpeggio: '아르페지오', pop8: '팝 8비트', waltz: '발라드 3/4', funk16: '펑크 16비트' };
-  toast(`재생 시작 (${labelMap[pattern] || pattern})`);
+  toast(`재생 시작 (${ACCOMPANIMENT[pattern].label})`);
   await playSequence(state.notes, state.lastRecommendations, { bpm, pattern, onEnd: () => toast('재생 완료') });
 }
 
@@ -337,18 +366,18 @@ function attachEvents() {
   $('melodyAiButton').addEventListener('click', appendSuggestedMelody);
   $('exportButton') && $('exportButton').addEventListener('click', exportPng);
 
+  document.querySelectorAll('[data-accompaniment]').forEach((button) => {
+    button.addEventListener('click', () => setAccompaniment(button.dataset.accompaniment));
+  });
+
   $('progressionSelect').addEventListener('change', (e) => {
     state.pattern = e.target.value;
   });
 
   const patternSelect = $('patternSelect');
   if (patternSelect) {
-    state.accompaniment = patternSelect.value || 'off';
-    patternSelect.addEventListener('change', (e) => {
-      state.accompaniment = e.target.value;
-      const labelMap = { off: '반주 끔', block: '블록 코드', arpeggio: '아르페지오', pop8: '팝 8비트', waltz: '발라드 3/4', funk16: '펑크 16비트' };
-      toast(`반주: ${labelMap[state.accompaniment] || state.accompaniment}`);
-    });
+    setAccompaniment(patternSelect.value || state.accompaniment, { announce: false });
+    patternSelect.addEventListener('change', (e) => setAccompaniment(e.target.value));
   }
 }
 
