@@ -1,0 +1,271 @@
+.composer-body {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(139, 92, 246, 0.22), transparent 28%),
+    radial-gradient(circle at 88% 4%, rgba(34, 211, 238, 0.18), transparent 26%),
+    linear-gradient(135deg, #070912 0%, #101728 60%, #080b14 100%);
+  min-height: 100vh;
+}
+
+.composer-shell {
+  width: min(1280px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 22px 0 56px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted-strong);
+  background: rgba(255, 255, 255, 0.04);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.back-link:hover {
+  background: rgba(255, 255, 255, 0.10);
+  transform: translateX(-2px);
+}
+
+.big-card {
+  padding: 22px 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    rgba(15, 23, 42, 0.72);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.25);
+  margin-bottom: 14px;
+}
+
+.big-card header {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.big-card h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+}
+
+.score-card .vex-host {
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: var(--radius-md);
+  min-height: 200px;
+}
+
+.chord-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  min-height: 36px;
+  padding: 6px 4px 4px;
+}
+
+.chord-strip .chord-strip-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 6px 4px;
+}
+
+.chord-strip .chord-pill {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  border-radius: 10px;
+  color: #f4f7fb;
+  background: rgba(139, 92, 246, 0.18);
+  font-size: 0.92rem;
+  box-shadow: 0 3px 8px rgba(139, 92, 246, 0.15);
+}
+
+.chord-strip .chord-pill-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: #07111f;
+  background: linear-gradient(135deg, var(--accent-2), #a78bfa);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.chord-strip .chord-pill-name {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.chord-strip .chord-pill-roman {
+  color: var(--muted-strong);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.piano-card .piano-frame {
+  margin-top: 0;
+  padding: 18px 18px 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.piano-card .piano-frame::before,
+.piano-card .piano-frame::after {
+  display: none;
+}
+
+.piano-card .piano {
+  height: 260px;
+}
+
+/* 설정 패널 (details, 접힘) */
+.settings {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(18, 27, 46, 0.65);
+}
+
+.settings > summary {
+  cursor: pointer;
+  padding: 14px 20px;
+  color: var(--muted-strong);
+  font-size: 0.95rem;
+  font-weight: 800;
+  list-style: none;
+}
+
+.settings > summary::marker,
+.settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings > summary::after {
+  content: "▾";
+  float: right;
+  color: var(--muted);
+  transition: transform 160ms ease;
+}
+
+.settings[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.settings[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 20px 4px;
+}
+
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 20px 16px;
+}
+
+.action-bar .primary-button,
+.action-bar .secondary-button,
+.action-bar .ghost-button {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 0.95rem;
+}
+
+.text-drawer {
+  margin: 0 20px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.text-drawer > summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  color: var(--muted-strong);
+  font-size: 0.88rem;
+  list-style: none;
+}
+
+.text-drawer > summary::marker,
+.text-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.text-drawer[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.text-drawer textarea {
+  margin: 14px 16px;
+  width: calc(100% - 32px);
+}
+
+.text-drawer p {
+  margin: 0 16px 14px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+@media (max-width: 1100px) {
+  .settings-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 920px) {
+  .settings-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .piano-card .piano {
+    height: 200px;
+  }
+}
+
+@media (max-width: 620px) {
+  .composer-shell {
+    width: min(100% - 20px, 1280px);
+    padding-top: 14px;
+  }
+
+  .big-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .piano-card .piano {
+    height: 180px;
+  }
+
+  .settings-grid,
+  .action-bar {
+    width: 100%;
+  }
+
+  .action-bar .primary-button,
+  .action-bar .secondary-button,
+  .action-bar .ghost-button {
+    flex: 1 1 30%;
+  }
+}

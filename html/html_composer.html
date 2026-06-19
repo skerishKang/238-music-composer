@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>238 Music Composer - 건반으로 멜로디를 만들고 코드를 추천받자</title>
+  <link rel="stylesheet" href="../css/css_main.css" />
+  <link rel="stylesheet" href="../css/css_components.css" />
+  <link rel="stylesheet" href="../css/css_responsive.css" />
+  <link rel="stylesheet" href="../css/css_piano.css" />
+  <link rel="stylesheet" href="../css/css_score.css" />
+  <link rel="stylesheet" href="../css/css_composer.css" />
+</head>
+<body class="composer-body">
+  <main class="composer-shell">
+    <a class="back-link" href="../index.html">← 처음으로</a>
+
+    <section class="card big-card score-card" aria-label="악보">
+      <header>
+        <h3>멜로디</h3>
+        <span class="muted" id="resultSummary">건반을 눌러 멜로디를 쌓고, 코드 추천을 눌러보세요.</span>
+      </header>
+      <div class="chord-strip" id="chordStrip" aria-label="추천 코드 진행"></div>
+      <div id="melodyScore" class="vex-host"></div>
+    </section>
+
+    <section class="card big-card piano-card" aria-label="피아노 건반">
+      <div class="piano-frame">
+        <div class="piano-octave-label" id="pianoLabel">C3 ~ B4</div>
+        <div id="piano" class="piano" role="group" aria-label="가상 피아노 건반"></div>
+      </div>
+    </section>
+
+    <details class="settings" id="settingsDrawer">
+      <summary>설정</summary>
+      <div class="settings-grid">
+        <div class="control-group">
+          <label for="rootSelect">조성</label>
+          <select id="rootSelect">
+            <option value="C">C</option>
+            <option value="C#">C#</option>
+            <option value="D">D</option>
+            <option value="D#">D#</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="F#">F#</option>
+            <option value="G">G</option>
+            <option value="G#">G#</option>
+            <option value="A">A</option>
+            <option value="A#">A#</option>
+            <option value="B">B</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="modeSelect">모드</label>
+          <select id="modeSelect">
+            <option value="major">장조</option>
+            <option value="minor">단조</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="bpmInput">BPM</label>
+          <input id="bpmInput" type="number" min="40" max="220" value="96" />
+        </div>
+        <div class="control-group">
+          <label for="progressionSelect">진행</label>
+          <select id="progressionSelect">
+            <option value="pop">팝 I-V-vi-IV</option>
+            <option value="ballad">발라드 I-VI-iii-IV</option>
+            <option value="jazz">재즈 ii-V-I</option>
+            <option value="minor">단조 i-VI-III-VII</option>
+            <option value="emo">감성 vi-IV-I-V</option>
+            <option value="loop">루프 I-vi-IV-V</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="patternSelect">반주</label>
+          <select id="patternSelect">
+            <option value="off">반주 끄기</option>
+            <option value="block">블록 코드</option>
+            <option value="arpeggio">아르페지오</option>
+            <option value="pop8">팝 8비트</option>
+            <option value="waltz">발라드 3/4</option>
+            <option value="funk16">펑크 16비트</option>
+          </select>
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="primary-button" type="button" id="analyzeButton">코드 추천</button>
+        <button class="secondary-button" type="button" id="progressionButton">진행 만들기</button>
+        <button class="secondary-button" type="button" id="playButton">▶ 재생</button>
+        <button class="ghost-button" type="button" id="stopButton">정지</button>
+        <button class="ghost-button" type="button" id="sampleButton">샘플</button>
+        <button class="ghost-button" type="button" id="undoButton">되돌리기</button>
+        <button class="ghost-button" type="button" id="clearMelodyButton">지우기</button>
+      </div>
+      <details class="text-drawer">
+        <summary>멜로디 텍스트 (편집 가능)</summary>
+        <textarea id="melodyInput" spellcheck="false" rows="3" placeholder="예: C4:q E4:q G4:q | A4:h C5:q"></textarea>
+        <p class="muted">길이 표기: q(1박) e(0.5박) h(2박) w(4박), 마디 구분은 <code>|</code></p>
+      </details>
+    </details>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="../js/js_app.js"></script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+.score-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.score-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    var(--panel-strong);
+  min-height: 220px;
+}
+
+.score-card header {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.score-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.vex-host {
+  position: relative;
+  width: 100%;
+  min-height: 160px;
+  padding: 8px 4px 4px;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.97);
+}
+
+.vex-host svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.vex-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 140px;
+  color: #5d6a86;
+  font-size: 0.92rem;
+}
+
+.chord-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.chord-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 4px;
+  font-family: Inter, sans-serif;
+  color: #1f2533;
+}
+
+.chord-board-cell {
+  min-width: 92px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fafc, #e6ecf5);
+  border: 1px solid rgba(20, 30, 60, 0.08);
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(20, 30, 60, 0.08);
+}
+
+.chord-board-cell .chord-board-bar {
+  font-size: 0.74rem;
+  color: #5d6a86;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chord-board-cell .chord-board-name {
+  margin-top: 2px;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.chord-board-cell .chord-board-roman {
+  font-size: 0.78rem;
+  color: #3b465c;
+  margin-top: 2px;
+}
+
+.chord-board-cell .chord-board-notes {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.chord-board-cell .chord-board-note {
+  padding: 2px 6px;
+  background: rgba(34, 211, 238, 0.18);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+}
+
+@media (max-width: 880px) {
+  .score-grid {
+    grid-template-columns: 1fr;
+  }
+}
