@@ -69,6 +69,7 @@ function startNewComposition() {
   if (!clearButton) return;
   clearButton.click();
   document.dispatchEvent(new CustomEvent('composer:history-reset'));
+  document.dispatchEvent(new Event('composer:autosave-now'));
   const summary = $('resultSummary');
   if (summary) summary.textContent = '새 곡을 시작할 준비가 됐습니다. 아래 피아노를 눌러 멜로디를 입력하세요.';
   showToast('새 작곡을 시작합니다');
