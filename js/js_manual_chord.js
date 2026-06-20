@@ -47,14 +47,14 @@ function option(value, label) {
 }
 
 function setDisabled(disabled) {
-  ['manualChordBar', 'manualChordRoot', 'manualChordQuality', 'manualChordApply'].forEach((id) => {
+  ['manualChordBar', 'manualChordRoot', 'manualChordQuality', 'manualChordApply', 'manualChordReset'].forEach((id) => {
     const control = $(id);
     if (control) control.disabled = disabled;
   });
   const hint = $('manualChordHint');
   if (hint) hint.textContent = disabled
     ? '코드 추천 또는 코드 진행 만들기 후 사용할 수 있어요.'
-    : '현재 마디의 코드를 직접 지정합니다. 선택 코드는 저장·복원됩니다.';
+    : '현재 마디의 코드를 직접 지정하거나 기본 추천으로 되돌릴 수 있어요.';
 }
 
 function syncBars() {
@@ -70,13 +70,26 @@ function syncBars() {
   setDisabled(count === 0);
 }
 
-function applyManualChord() {
+function selectedBar() {
   const bar = Number($('manualChordBar')?.value);
+  return Number.isInteger(bar) && bar >= 0 ? bar : null;
+}
+
+function applyManualChord() {
+  const bar = selectedBar();
   const rootPc = Number($('manualChordRoot')?.value);
   const quality = $('manualChordQuality')?.value;
-  if (!Number.isInteger(bar) || !Number.isInteger(rootPc) || !QUALITIES.some((item) => item.value === quality)) return;
+  if (bar === null || !Number.isInteger(rootPc) || !QUALITIES.some((item) => item.value === quality)) return;
   document.dispatchEvent(new CustomEvent('composer:set-manual-chord', {
     detail: { bar, rootPc, quality },
+  }));
+}
+
+function resetChordChoice() {
+  const bar = selectedBar();
+  if (bar === null) return;
+  document.dispatchEvent(new CustomEvent('composer:reset-chord-choice', {
+    detail: { bar },
   }));
 }
 
@@ -86,6 +99,7 @@ function init() {
   ROOTS.forEach(({ rootPc, name }) => rootSelect?.appendChild(option(rootPc, name)));
   QUALITIES.forEach(({ value, label }) => qualitySelect?.appendChild(option(value, label)));
   $('manualChordApply')?.addEventListener('click', applyManualChord);
+  $('manualChordReset')?.addEventListener('click', resetChordChoice);
 
   const chordStrip = $('chordStrip');
   if (chordStrip) new MutationObserver(syncBars).observe(chordStrip, { childList: true, subtree: true });
