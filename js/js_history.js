@@ -2,7 +2,7 @@
 // 500줄 이내 유지
 
 const HISTORY_LIMIT = 80;
-const PIANO_KEYS = '.piano-key, .piano-black';
+const PIANO_KEYS = '.piano-key, .piano-black, #pianoRestButton';
 const ONE_STEP_ACTIONS = '#melodyAiButton, #clearMelodyButton, #sampleButton';
 const PIANO_SHORTCUTS = new Set(['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'w', 'e', 't', 'y', 'u', 'o', 'p']);
 
