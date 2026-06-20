@@ -53,7 +53,7 @@ function appendRest(duration) {
   if (summary) summary.textContent = '쉼표를 넣었습니다. AI 코드 추천을 다시 눌러보세요.';
 }
 
-function ensureDurationControl(rootEl, labelEl) {
+function ensureDurationControl(rootEl) {
   const existing = document.getElementById('noteDurationSelect');
   if (existing instanceof HTMLSelectElement) return existing;
 
@@ -63,7 +63,7 @@ function ensureDurationControl(rootEl, labelEl) {
   control.setAttribute('aria-label', '건반 입력 도구');
   const label = document.createElement('label');
   label.htmlFor = 'noteDurationSelect';
-  label.textContent = '건반 음 길이';
+  label.textContent = '음 길이';
   const select = document.createElement('select');
   select.id = 'noteDurationSelect';
   select.className = 'piano-duration-select';
@@ -79,13 +79,12 @@ function ensureDurationControl(rootEl, labelEl) {
   restButton.type = 'button';
   restButton.id = 'pianoRestButton';
   restButton.className = 'ghost-button piano-rest-button';
-  restButton.textContent = '쉼표 추가';
+  restButton.textContent = '쉼표';
   restButton.title = '선택한 길이만큼 쉼표를 입력합니다';
   restButton.addEventListener('click', () => appendRest(selectedDuration(select.value)));
   control.append(label, select, restButton);
 
-  if (labelEl) labelEl.insertAdjacentElement('afterend', control);
-  else rootEl.insertAdjacentElement('beforebegin', control);
+  rootEl.insertAdjacentElement('afterend', control);
   return select;
 }
 
@@ -128,7 +127,7 @@ function blackOffsetPercent(whiteIndex) {
 
 export function mountPiano(rootEl, labelEl, callbacks = {}) {
   const { onKeyPress, onKeyRelease, getDuration } = callbacks;
-  const durationSelect = ensureDurationControl(rootEl, labelEl);
+  const durationSelect = ensureDurationControl(rootEl);
   const { whites, blacks } = buildKeyList();
   rootEl.innerHTML = '';
 
