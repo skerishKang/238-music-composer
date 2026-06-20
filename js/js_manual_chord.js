@@ -88,9 +88,17 @@ function applyManualChord() {
 function resetChordChoice() {
   const bar = selectedBar();
   if (bar === null) return;
-  document.dispatchEvent(new CustomEvent('composer:reset-chord-choice', {
-    detail: { bar },
-  }));
+  const defaultCandidate = document.querySelector(`#chordCandidates .chord-candidate[data-bar-index="${bar}"][data-candidate-index="0"]`);
+  if (defaultCandidate instanceof HTMLButtonElement) {
+    defaultCandidate.click();
+    return;
+  }
+  const toast = $('toast');
+  if (toast) {
+    toast.textContent = '이 마디는 이미 기본 진행입니다';
+    toast.classList.add('show');
+    window.setTimeout(() => toast.classList.remove('show'), 1800);
+  }
 }
 
 function init() {
