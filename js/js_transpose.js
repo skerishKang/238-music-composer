@@ -5,6 +5,8 @@ import { buildMelodyText, normalizeRoot, noteName, parseMelody, rootPc } from '.
 
 const $ = (id) => document.getElementById(id);
 let compositionAnchored = false;
+let transactionActive = false;
+let lastTranspose = null;
 
 function showToast(message) {
   const toast = $('toast');
@@ -21,7 +23,7 @@ function chordParts(label) {
   return { root: label, quality: 'maj' };
 }
 
-function currentChordChoices(delta) {
+function currentChordChoices(delta = 0) {
   return Array.from(document.querySelectorAll('#chordStrip .chord-pill-name'))
     .map((node, bar) => {
       const { root, quality } = chordParts(node.textContent?.trim() || '');
@@ -36,22 +38,57 @@ function shiftNotes(notes, delta) {
     if (note.rest) return note;
     const midi = Math.max(0, Math.min(127, (note.midi ?? ((note.octave + 1) * 12 + note.pc)) + delta));
     const pc = ((midi % 12) + 12) % 12;
+    const octave = Math.floor(midi / 12) - 1;
     return {
       ...note,
       midi,
       pc,
       pitch: noteName(pc),
-      octave: Math.floor(midi / 12) - 1,
-      token: `${noteName(pc)}${Math.floor(midi / 12) - 1}:${note.duration}`,
+      octave,
+      token: `${noteName(pc)}${octave}:${note.duration}`,
     };
   });
 }
 
-function restoreChoices(choices) {
+function setRevertAvailability(enabled) {
+  const button = $('transposeUndoButton');
+  if (!button) return;
+  button.disabled = !enabled;
+  button.setAttribute('aria-disabled', String(!enabled));
+}
+
+function resetMelodyHistory() {
+  document.dispatchEvent(new CustomEvent('composer:history-reset'));
+}
+
+function restoreChoices(snapshot) {
+  const input = $('melodyInput');
+  const rootSelect = $('rootSelect');
+  if (!input || !rootSelect || input.value !== snapshot.melody || normalizeRoot(rootSelect.value) !== snapshot.root) return;
   $('analyzeButton')?.click();
-  choices.forEach((choice) => {
+  snapshot.choices.forEach((choice) => {
     document.dispatchEvent(new CustomEvent('composer:set-manual-chord', { detail: choice }));
   });
+}
+
+function applyCompositionSnapshot(snapshot, message) {
+  const rootSelect = $('rootSelect');
+  const input = $('melodyInput');
+  if (!rootSelect || !input) return;
+
+  transactionActive = true;
+  rootSelect.value = snapshot.root;
+  rootSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  input.value = snapshot.melody;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  rootSelect.dataset.compositionRoot = snapshot.root;
+  compositionAnchored = Boolean(snapshot.melody.trim());
+  resetMelodyHistory();
+  window.setTimeout(() => {
+    restoreChoices(snapshot);
+    transactionActive = false;
+  }, 280);
+  showToast(message);
 }
 
 function transpose() {
@@ -72,13 +109,32 @@ function transpose() {
     return;
   }
 
-  const choices = currentChordChoices(delta);
-  input.value = buildMelodyText(shiftNotes(parsed.notes, delta));
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  rootSelect.dataset.compositionRoot = target;
-  compositionAnchored = true;
-  window.setTimeout(() => restoreChoices(choices), 280);
-  showToast(`${source} → ${target}로 전조했습니다`);
+  const before = { root: source, melody: input.value, choices: currentChordChoices() };
+  const after = {
+    root: target,
+    melody: buildMelodyText(shiftNotes(parsed.notes, delta)),
+    choices: currentChordChoices(delta),
+  };
+  lastTranspose = before;
+  setRevertAvailability(true);
+  applyCompositionSnapshot(after, `${source} → ${target}로 전조했습니다`);
+}
+
+function revertTranspose() {
+  if (!lastTranspose) {
+    showToast('원복할 전조가 없습니다');
+    return;
+  }
+  const before = lastTranspose;
+  lastTranspose = null;
+  setRevertAvailability(false);
+  applyCompositionSnapshot(before, `${before.root} 조성으로 전조를 원복했습니다`);
+}
+
+function clearStaleRevert() {
+  if (transactionActive || !lastTranspose) return;
+  lastTranspose = null;
+  setRevertAvailability(false);
 }
 
 function ensureButton() {
@@ -95,7 +151,19 @@ function ensureButton() {
   button.textContent = '전조 적용';
   button.title = '현재 멜로디와 선택 코드를 조성에 맞춰 이동합니다';
   rootSelect.insertAdjacentElement('afterend', button);
+
+  const undoButton = document.createElement('button');
+  undoButton.type = 'button';
+  undoButton.id = 'transposeUndoButton';
+  undoButton.className = 'ghost-button';
+  undoButton.textContent = '전조 원복';
+  undoButton.title = '마지막 전조 전의 멜로디·조성·코드를 한 번에 되돌립니다';
+  undoButton.disabled = true;
+  undoButton.setAttribute('aria-disabled', 'true');
+  button.insertAdjacentElement('afterend', undoButton);
+
   button.addEventListener('click', transpose);
+  undoButton.addEventListener('click', revertTranspose);
 
   const anchorComposition = () => {
     if (!compositionAnchored && input.value.trim()) {
@@ -103,11 +171,21 @@ function ensureButton() {
       compositionAnchored = true;
     }
   };
-  input.addEventListener('input', anchorComposition);
+  input.addEventListener('input', () => {
+    anchorComposition();
+    clearStaleRevert();
+  });
   document.addEventListener('pointerdown', (event) => {
-    if (event.target instanceof Element && event.target.closest('.piano-key, .piano-black')) anchorComposition();
+    if (event.target instanceof Element && event.target.closest('.piano-key, .piano-black')) {
+      anchorComposition();
+      clearStaleRevert();
+    }
+  }, true);
+  document.addEventListener('click', (event) => {
+    if (event.target instanceof Element && event.target.closest('.chord-candidate, #manualChordApply, #manualChordReset')) clearStaleRevert();
   }, true);
   rootSelect.addEventListener('change', () => {
+    if (!transactionActive) clearStaleRevert();
     if (!input.value.trim()) {
       rootSelect.dataset.compositionRoot = normalizeRoot(rootSelect.value);
       compositionAnchored = false;
