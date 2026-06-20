@@ -7,6 +7,13 @@ const PIANO_OCTAVES = [3, 4]; // C3 ~ B4
 const WHITE_PER_OCTAVE = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 const BLACK_PER_OCTAVE = ['C#', 'D#', 'F#', 'G#', 'A#'];
 const ALLOWED_DURATIONS = new Set([0.125, 0.25, 0.5, 1, 2, 4]);
+const DURATION_OPTIONS = [
+  ['0.25', '16분음표'],
+  ['0.5', '8분음표'],
+  ['1', '4분음표'],
+  ['2', '2분음표'],
+  ['4', '온음표'],
+];
 
 const KEYBOARD_WHITE = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"];
 const KEYBOARD_BLACK = ['w', 'e', '', 't', 'y', 'u', '', 'o', 'p', ''];
@@ -20,6 +27,33 @@ function modifiedDuration(baseDuration, event) {
   if (event.altKey) return Math.min(4, baseDuration * 2);
   if (event.shiftKey || event.button === 2 || event.detail >= 2) return Math.max(0.125, baseDuration / 2);
   return baseDuration;
+}
+
+function ensureDurationControl(rootEl, labelEl) {
+  const existing = document.getElementById('noteDurationSelect');
+  if (existing instanceof HTMLSelectElement) return existing;
+
+  const control = document.createElement('label');
+  control.className = 'piano-duration-control';
+  control.htmlFor = 'noteDurationSelect';
+  const title = document.createElement('span');
+  title.textContent = '건반 음 길이';
+  const select = document.createElement('select');
+  select.id = 'noteDurationSelect';
+  select.className = 'piano-duration-select';
+  select.setAttribute('aria-label', '새로 입력할 음의 길이');
+  DURATION_OPTIONS.forEach(([value, label]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === '1';
+    select.appendChild(option);
+  });
+  control.append(title, select);
+
+  if (labelEl) labelEl.insertAdjacentElement('afterend', control);
+  else rootEl.insertAdjacentElement('beforebegin', control);
+  return select;
 }
 
 // 건반 데이터 생성
@@ -61,6 +95,7 @@ function blackOffsetPercent(whiteIndex) {
 
 export function mountPiano(rootEl, labelEl, callbacks = {}) {
   const { onKeyPress, onKeyRelease, getDuration } = callbacks;
+  const durationSelect = ensureDurationControl(rootEl, labelEl);
   const { whites, blacks } = buildKeyList();
   rootEl.innerHTML = '';
 
@@ -109,7 +144,7 @@ export function mountPiano(rootEl, labelEl, callbacks = {}) {
 
   // 활성 상태 추적
   const active = new Set();
-  const defaultDuration = () => selectedDuration(getDuration?.());
+  const defaultDuration = () => selectedDuration(getDuration?.() ?? durationSelect.value);
 
   function flash(keyEl, durationValue = 1) {
     if (!keyEl) return;
