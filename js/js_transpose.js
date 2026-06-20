@@ -4,6 +4,7 @@
 import { buildMelodyText, normalizeRoot, noteName, parseMelody, rootPc } from './js_theory.js';
 
 const $ = (id) => document.getElementById(id);
+let compositionAnchored = false;
 
 function showToast(message) {
   const toast = $('toast');
@@ -75,14 +76,18 @@ function transpose() {
   input.value = buildMelodyText(shiftNotes(parsed.notes, delta));
   input.dispatchEvent(new Event('input', { bubbles: true }));
   rootSelect.dataset.compositionRoot = target;
+  compositionAnchored = true;
   window.setTimeout(() => restoreChoices(choices), 280);
   showToast(`${source} → ${target}로 전조했습니다`);
 }
 
 function ensureButton() {
   const rootSelect = $('rootSelect');
-  if (!rootSelect || $('transposeButton')) return;
+  const input = $('melodyInput');
+  if (!rootSelect || !input || $('transposeButton')) return;
   rootSelect.dataset.compositionRoot = normalizeRoot(rootSelect.value);
+  compositionAnchored = Boolean(input.value.trim());
+
   const button = document.createElement('button');
   button.type = 'button';
   button.id = 'transposeButton';
@@ -91,8 +96,22 @@ function ensureButton() {
   button.title = '현재 멜로디와 선택 코드를 조성에 맞춰 이동합니다';
   rootSelect.insertAdjacentElement('afterend', button);
   button.addEventListener('click', transpose);
+
+  const anchorComposition = () => {
+    if (!compositionAnchored && input.value.trim()) {
+      rootSelect.dataset.compositionRoot = normalizeRoot(rootSelect.value);
+      compositionAnchored = true;
+    }
+  };
+  input.addEventListener('input', anchorComposition);
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target instanceof Element && event.target.closest('.piano-key, .piano-black')) anchorComposition();
+  }, true);
   rootSelect.addEventListener('change', () => {
-    if (!$('melodyInput')?.value.trim()) rootSelect.dataset.compositionRoot = normalizeRoot(rootSelect.value);
+    if (!input.value.trim()) {
+      rootSelect.dataset.compositionRoot = normalizeRoot(rootSelect.value);
+      compositionAnchored = false;
+    }
   });
 }
 
