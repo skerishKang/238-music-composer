@@ -1,7 +1,7 @@
 // js_piano.js — 피아노 건반 UI·이벤트
 // 500줄 이내 유지
 
-import { BLACK_KEYS, SHARP_NAMES, formatDuration } from './js_theory.js';
+import { SHARP_NAMES, formatDuration, parseMelody, buildMelodyText } from './js_theory.js';
 
 const PIANO_OCTAVES = [3, 4]; // C3 ~ B4
 const WHITE_PER_OCTAVE = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
@@ -29,27 +29,60 @@ function modifiedDuration(baseDuration, event) {
   return baseDuration;
 }
 
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('show');
+  window.setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+function appendRest(duration) {
+  const input = document.getElementById('melodyInput');
+  if (!(input instanceof HTMLTextAreaElement)) return;
+  const parsed = parseMelody(input.value);
+  if (parsed.errors.length) {
+    showToast(parsed.errors[0]);
+    return;
+  }
+  const token = duration === 1 ? '-' : `-:${formatDuration(duration)}`;
+  const current = buildMelodyText(parsed.notes);
+  input.value = current ? `${current} ${token}` : token;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  const summary = document.getElementById('resultSummary');
+  if (summary) summary.textContent = '쉼표를 넣었습니다. AI 코드 추천을 다시 눌러보세요.';
+}
+
 function ensureDurationControl(rootEl, labelEl) {
   const existing = document.getElementById('noteDurationSelect');
   if (existing instanceof HTMLSelectElement) return existing;
 
-  const control = document.createElement('label');
+  const control = document.createElement('div');
   control.className = 'piano-duration-control';
-  control.htmlFor = 'noteDurationSelect';
-  const title = document.createElement('span');
-  title.textContent = '건반 음 길이';
+  control.setAttribute('role', 'group');
+  control.setAttribute('aria-label', '건반 입력 도구');
+  const label = document.createElement('label');
+  label.htmlFor = 'noteDurationSelect';
+  label.textContent = '건반 음 길이';
   const select = document.createElement('select');
   select.id = 'noteDurationSelect';
   select.className = 'piano-duration-select';
   select.setAttribute('aria-label', '새로 입력할 음의 길이');
-  DURATION_OPTIONS.forEach(([value, label]) => {
+  DURATION_OPTIONS.forEach(([value, text]) => {
     const option = document.createElement('option');
     option.value = value;
-    option.textContent = label;
+    option.textContent = text;
     option.selected = value === '1';
     select.appendChild(option);
   });
-  control.append(title, select);
+  const restButton = document.createElement('button');
+  restButton.type = 'button';
+  restButton.id = 'pianoRestButton';
+  restButton.className = 'ghost-button piano-rest-button';
+  restButton.textContent = '쉼표 추가';
+  restButton.title = '선택한 길이만큼 쉼표를 입력합니다';
+  restButton.addEventListener('click', () => appendRest(selectedDuration(select.value)));
+  control.append(label, select, restButton);
 
   if (labelEl) labelEl.insertAdjacentElement('afterend', control);
   else rootEl.insertAdjacentElement('beforebegin', control);
