@@ -4,7 +4,7 @@
 const RESTORE_SYNC_DELAY = 340;
 const HISTORY_BUTTONS = '#undoButton, #redoButton';
 const BLOCKED_BUTTONS = '#melodyAiButton, #analyzeButton, #playButton, #progressionButton, #clearMelodyButton, #sampleButton, #projectImportButton';
-const PIANO_KEYS = '.piano-key, .piano-black';
+const PIANO_KEYS = '.piano-key, .piano-black, #pianoRestButton';
 const PIANO_SHORTCUTS = new Set(['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'", 'w', 'e', 't', 'y', 'u', 'o', 'p']);
 
 const $ = (id) => document.getElementById(id);
