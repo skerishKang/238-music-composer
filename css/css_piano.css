@@ -36,6 +36,25 @@
   text-transform: uppercase;
 }
 
+.piano-duration-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 14px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.piano-duration-select {
+  min-width: 104px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
 .piano {
   position: relative;
   display: flex;
