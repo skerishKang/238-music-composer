@@ -78,6 +78,16 @@ function beginTextChange() {
   scheduleCommit(320);
 }
 
+function resetCompositionHistory() {
+  if (settleTimer) window.clearTimeout(settleTimer);
+  settleTimer = null;
+  pendingSnapshot = null;
+  baseline = currentText();
+  undoStack = [];
+  redoStack = [];
+  updateControls();
+}
+
 function applySnapshot(snapshot, direction) {
   const input = $('melodyInput');
   restoringInput = true;
@@ -152,6 +162,7 @@ function init() {
 
   $('melodyInput')?.addEventListener('input', beginTextChange);
   $('projectImportInput')?.addEventListener('change', () => beginChange(500), true);
+  document.addEventListener('composer:history-reset', resetCompositionHistory);
 
   window.addEventListener('keydown', (event) => {
     if (event.defaultPrevented || event.isComposing) return;
