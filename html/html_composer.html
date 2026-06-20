@@ -60,16 +60,64 @@
         <div class="control-group">
           <label for="rootSelect">조성</label>
           <select id="rootSelect">
-            <option value="C">C</option><option value="C#">C#</option><option value="D">D</option><option value="D#">D#</option><option value="E">E</option><option value="F">F</option><option value="F#">F#</option><option value="G">G</option><option value="G#">G#</option><option value="A">A</option><option value="A#">A#</option><option value="B">B</option>
+            <option value="C">C</option>
+            <option value="C#">C#</option>
+            <option value="D">D</option>
+            <option value="D#">D#</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="F#">F#</option>
+            <option value="G">G</option>
+            <option value="G#">G#</option>
+            <option value="A">A</option>
+            <option value="A#">A#</option>
+            <option value="B">B</option>
           </select>
         </div>
-        <div class="control-group"><label for="modeSelect">모드</label><select id="modeSelect"><option value="major">장조</option><option value="minor">단조</option></select></div>
-        <div class="control-group"><label for="bpmInput">BPM</label><input id="bpmInput" type="number" min="40" max="220" value="96" /></div>
-        <div class="control-group"><label for="progressionSelect">진행</label><select id="progressionSelect"><option value="pop">팝 I-V-vi-IV</option><option value="ballad">발라드 I-VI-iii-IV</option><option value="jazz">재즈 ii-V-I</option><option value="minor">단조 i-VI-III-VII</option><option value="emo">감성 vi-IV-I-V</option><option value="loop">루프 I-vi-IV-V</option></select></div>
-        <div class="control-group"><label for="patternSelect">반주</label><select id="patternSelect"><option value="off">반주 끄기 (멜로디만)</option><option value="block">블록 코드</option><option value="arpeggio" selected>아르페지오</option><option value="pop8">팝 8비트</option><option value="waltz">발라드 3/4</option><option value="funk16">펑크 16비트</option></select></div>
+        <div class="control-group">
+          <label for="modeSelect">모드</label>
+          <select id="modeSelect">
+            <option value="major">장조</option>
+            <option value="minor">단조</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="bpmInput">BPM</label>
+          <input id="bpmInput" type="number" min="40" max="220" value="96" />
+        </div>
+        <div class="control-group">
+          <label for="progressionSelect">진행</label>
+          <select id="progressionSelect">
+            <option value="pop">팝 I-V-vi-IV</option>
+            <option value="ballad">발라드 I-VI-iii-IV</option>
+            <option value="jazz">재즈 ii-V-I</option>
+            <option value="minor">단조 i-VI-III-VII</option>
+            <option value="emo">감성 vi-IV-I-V</option>
+            <option value="loop">루프 I-vi-IV-V</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="patternSelect">반주</label>
+          <select id="patternSelect">
+            <option value="off">반주 끄기 (멜로디만)</option>
+            <option value="block">블록 코드</option>
+            <option value="arpeggio" selected>아르페지오</option>
+            <option value="pop8">팝 8비트</option>
+            <option value="waltz">발라드 3/4</option>
+            <option value="funk16">펑크 16비트</option>
+          </select>
+        </div>
       </div>
       <div class="settings-utility" aria-label="보조 도구">
-        <button class="ghost-button" type="button" id="progressionButton">코드 진행 만들기</button><button class="ghost-button" type="button" id="stopButton">정지</button><button class="ghost-button" type="button" id="sampleButton">예시 멜로디</button><button class="ghost-button" type="button" id="exportScoreButton">완성 악보 SVG</button><button class="ghost-button" type="button" id="projectExportButton">프로젝트 저장</button><button class="ghost-button" type="button" id="projectImportButton">프로젝트 불러오기</button><button class="ghost-button" type="button" id="undoButton" disabled title="되돌리기 (Ctrl/⌘ + Z)">되돌리기</button><button class="ghost-button" type="button" id="redoButton" disabled title="다시 실행 (Ctrl/⌘ + Shift + Z)">다시 실행</button><button class="ghost-button danger-soft" type="button" id="clearMelodyButton">전체 지우기</button>
+        <button class="ghost-button" type="button" id="progressionButton">코드 진행 만들기</button>
+        <button class="ghost-button" type="button" id="stopButton">정지</button>
+        <button class="ghost-button" type="button" id="sampleButton">예시 멜로디</button>
+        <button class="ghost-button" type="button" id="exportScoreButton">완성 악보 SVG</button>
+        <button class="ghost-button" type="button" id="projectExportButton">프로젝트 저장</button>
+        <button class="ghost-button" type="button" id="projectImportButton">프로젝트 불러오기</button>
+        <button class="ghost-button" type="button" id="undoButton" disabled title="되돌리기 (Ctrl/⌘ + Z)">되돌리기</button>
+        <button class="ghost-button" type="button" id="redoButton" disabled title="다시 실행 (Ctrl/⌘ + Shift + Z)">다시 실행</button>
+        <button class="ghost-button danger-soft" type="button" id="clearMelodyButton">전체 지우기</button>
       </div>
       <details class="manual-chord-drawer" id="manualChordDrawer">
         <summary>마디 코드 직접 편집</summary>
@@ -83,10 +131,16 @@
         </div>
       </details>
       <input id="projectImportInput" type="file" accept="application/json,.json" hidden />
-      <details class="text-drawer"><summary>멜로디 텍스트 (편집 가능)</summary><textarea id="melodyInput" spellcheck="false" rows="3" placeholder="예: C4:q E4:q G4:q | A4:h C5:q"></textarea><p class="muted">길이: q(1박) e(0.5박) h(2박) w(4박) · 쉼표: <code>-</code>, <code>-:h</code> · 마디 구분: <code>|</code></p></details>
+      <details class="text-drawer">
+        <summary>멜로디 텍스트 (편집 가능)</summary>
+        <textarea id="melodyInput" spellcheck="false" rows="3" placeholder="예: C4:q E4:q G4:q | A4:h C5:q"></textarea>
+        <p class="muted">길이: q(1박) e(0.5박) h(2박) w(4박) · 쉼표: <code>-</code>, <code>-:h</code> · 마디 구분: <code>|</code></p>
+      </details>
     </details>
   </main>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
   <script type="module" src="../js/js_app.js"></script>
   <script type="module" src="../js/js_empty_state_draft.js"></script>
   <script type="module" src="../js/js_autosave.js"></script>
