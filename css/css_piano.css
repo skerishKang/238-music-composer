@@ -39,11 +39,16 @@
 .piano-duration-control {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 8px;
-  margin: -4px 0 14px;
+  margin: 12px 0 0;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
+}
+
+.piano-duration-control label {
+  white-space: nowrap;
 }
 
 .piano-duration-select {
@@ -202,6 +207,10 @@
 @media (max-width: 720px) {
   .piano {
     height: 180px;
+  }
+
+  .piano-duration-control {
+    justify-content: flex-start;
   }
 
   .piano-key {
