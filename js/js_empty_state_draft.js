@@ -1,4 +1,4 @@
-// js_empty_state_draft.js — 빈 악보에서 규칙 기반 멜로디 초안 시작
+// js_empty_state_draft.js — 빈 악보에서 규칙 기반 멜로디 초안 시작·새 작곡
 // 500줄 이내 유지
 
 import { buildDiatonic, buildProgression, noteName, normalizeRoot } from './js_theory.js';
@@ -64,6 +64,32 @@ function startFromEmptyState(event) {
   window.setTimeout(() => showToast('규칙 기반 2마디 멜로디 초안을 만들었습니다'), 380);
 }
 
+function startNewComposition() {
+  const clearButton = $('clearMelodyButton');
+  const input = $('melodyInput');
+  if (!clearButton || !input) return;
+  clearButton.click();
+  document.dispatchEvent(new CustomEvent('composer:history-reset'));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  const summary = $('resultSummary');
+  if (summary) summary.textContent = '새 곡을 시작할 준비가 됐습니다. 아래 피아노를 눌러 멜로디를 입력하세요.';
+  showToast('새 작곡을 시작합니다');
+}
+
+function mountNewCompositionButton() {
+  const toolbar = document.querySelector('.workspace-toolbar-right');
+  if (!toolbar || $('newProjectButton')) return;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = 'newProjectButton';
+  button.className = 'workspace-button';
+  button.textContent = '새로 시작';
+  button.title = '현재 멜로디와 코드를 비우고 새 곡을 시작합니다';
+  button.addEventListener('click', startNewComposition);
+  toolbar.prepend(button);
+}
+
 function keepHiddenDrawerClosed() {
   const drawer = $('candidatesDrawer');
   if (!drawer) return;
@@ -79,7 +105,11 @@ function keepHiddenDrawerClosed() {
 
 document.addEventListener('click', startFromEmptyState, true);
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', keepHiddenDrawerClosed);
+  document.addEventListener('DOMContentLoaded', () => {
+    mountNewCompositionButton();
+    keepHiddenDrawerClosed();
+  });
 } else {
+  mountNewCompositionButton();
   keepHiddenDrawerClosed();
 }
