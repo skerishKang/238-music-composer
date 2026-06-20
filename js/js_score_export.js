@@ -209,9 +209,23 @@ function exportMidi() {
   showToast('멜로디와 코드 MIDI 다운로드 시작');
 }
 
+function ensureMidiButton() {
+  const existing = $('exportMidiButton');
+  if (existing) return existing;
+  const svgButton = $('exportScoreButton');
+  if (!svgButton) return null;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = 'exportMidiButton';
+  button.className = svgButton.className;
+  button.textContent = '연주 파일';
+  svgButton.insertAdjacentElement('afterend', button);
+  return button;
+}
+
 function init() {
   $('exportScoreButton')?.addEventListener('click', exportCompleteScore);
-  $('exportMidiButton')?.addEventListener('click', exportMidi);
+  ensureMidiButton()?.addEventListener('click', exportMidi);
 }
 
 if (document.readyState === 'loading') {
