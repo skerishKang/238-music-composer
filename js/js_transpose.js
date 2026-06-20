@@ -7,6 +7,7 @@ const $ = (id) => document.getElementById(id);
 let compositionAnchored = false;
 let transactionActive = false;
 let lastTranspose = null;
+let restoreGeneration = 0;
 
 function showToast(message) {
   const toast = $('toast');
@@ -61,14 +62,16 @@ function resetMelodyHistory() {
   document.dispatchEvent(new CustomEvent('composer:history-reset'));
 }
 
-function restoreChoices(snapshot) {
+function restoreChoices(snapshot, generation) {
   const input = $('melodyInput');
   const rootSelect = $('rootSelect');
-  if (!input || !rootSelect || input.value !== snapshot.melody || normalizeRoot(rootSelect.value) !== snapshot.root) return;
+  if (generation !== restoreGeneration || !input || !rootSelect || input.value !== snapshot.melody || normalizeRoot(rootSelect.value) !== snapshot.root) return;
+  transactionActive = true;
   $('analyzeButton')?.click();
   snapshot.choices.forEach((choice) => {
     document.dispatchEvent(new CustomEvent('composer:set-manual-chord', { detail: choice }));
   });
+  transactionActive = false;
 }
 
 function applyCompositionSnapshot(snapshot, message) {
@@ -84,10 +87,9 @@ function applyCompositionSnapshot(snapshot, message) {
   rootSelect.dataset.compositionRoot = snapshot.root;
   compositionAnchored = Boolean(snapshot.melody.trim());
   resetMelodyHistory();
-  window.setTimeout(() => {
-    restoreChoices(snapshot);
-    transactionActive = false;
-  }, 280);
+  transactionActive = false;
+  const generation = ++restoreGeneration;
+  window.setTimeout(() => restoreChoices(snapshot, generation), 280);
   showToast(message);
 }
 
@@ -132,7 +134,9 @@ function revertTranspose() {
 }
 
 function clearStaleRevert() {
-  if (transactionActive || !lastTranspose) return;
+  if (transactionActive) return;
+  restoreGeneration += 1;
+  if (!lastTranspose) return;
   lastTranspose = null;
   setRevertAvailability(false);
 }
@@ -182,7 +186,7 @@ function ensureButton() {
     }
   }, true);
   document.addEventListener('click', (event) => {
-    if (event.target instanceof Element && event.target.closest('.chord-candidate, #manualChordApply, #manualChordReset')) clearStaleRevert();
+    if (event.target instanceof Element && event.target.closest('.chord-candidate, #manualChordApply, #manualChordReset, #analyzeButton, #progressionButton')) clearStaleRevert();
   }, true);
   rootSelect.addEventListener('change', () => {
     if (!transactionActive) clearStaleRevert();
