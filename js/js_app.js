@@ -6,10 +6,11 @@ import {
   groupByBar, PROGRESSION_LABELS, normalizeRoot, noteName,
 } from './js_theory.js';
 import { mountPiano } from './js_piano.js';
-import { renderMelodyScore, renderChordStrip, exportMelodyPng } from './js_score.js';
+import { renderMelodyScore, renderChordStrip } from './js_score.js';
 import { playSequence, stopSequence, previewNote } from './js_audio.js';
 import { toast, updateStats, renderMiniMelody, renderMiniChords } from './js_ui.js';
 import { renderChordCandidates } from './js_chord_candidates.js';
+import { createManualChordRecommendation } from './js_manual_chord.js';
 
 const SAMPLE_MELODY = 'C4:q E4:e G4:e | A4:q G4:e E4:e | F4:h D4:h | G4:q E4:e C4:e | D4:q F4:e A4:e | G4:h E4:h | C4:w';
 const BEATS_PER_BAR = 4;
@@ -31,7 +32,6 @@ const state = {
   accompaniment: 'arpeggio',
 };
 
-let pianoRef = null;
 let textDebounce = null;
 let textSource = 'piano';
 
@@ -89,9 +89,7 @@ function setAccompaniment(pattern, options = {}) {
   state.accompaniment = next;
 
   const select = $('patternSelect');
-  if (select && select.value !== next) {
-    select.value = next;
-  }
+  if (select && select.value !== next) select.value = next;
 
   document.querySelectorAll('[data-accompaniment]').forEach((button) => {
     const selected = button.dataset.accompaniment === next;
@@ -99,23 +97,19 @@ function setAccompaniment(pattern, options = {}) {
     button.setAttribute('aria-pressed', String(selected));
   });
   setText('accompanimentHint', ACCOMPANIMENT[next].hint);
-
-  if (announce) {
-    toast(`반주: ${ACCOMPANIMENT[next].label}`);
-  }
+  if (announce) toast(`반주: ${ACCOMPANIMENT[next].label}`);
 }
 
 function pushNote(noteInput) {
   const match = noteInput.token.match(/^([A-G][#b]?)(\d)/i);
   const octave = match ? Number(match[2]) : 4;
   const pitch = match ? match[1].toUpperCase() : noteInput.pitch;
-  const duration = noteInput.duration || 1;
   const position = getNextNotePosition();
   const note = makeNote({
     pc: noteInput.pc,
     pitch,
     octave,
-    duration,
+    duration: noteInput.duration || 1,
     bar: position.bar,
     beat: position.beat,
   });
@@ -142,9 +136,7 @@ function renderRecommendations() {
   if (drawer) {
     drawer.hidden = !hasCandidates;
     const meta = $('candidatesMeta');
-    if (meta) {
-      meta.textContent = hasCandidates ? `(${state.chordCandidates.length}마디)` : '';
-    }
+    if (meta) meta.textContent = hasCandidates ? `(${state.chordCandidates.length}마디)` : '';
   }
   renderChordCandidates($('chordCandidates'), hasCandidates ? state.chordCandidates : [], {
     selected: state.lastRecommendations,
@@ -158,19 +150,14 @@ function renderEmptyHint() {
   if (!host || !hint) return;
   const empty = state.notes.length === 0;
   hint.hidden = !empty;
-  if (empty) {
-    const vexEmpty = host.querySelector('.vex-empty');
-    if (vexEmpty) vexEmpty.remove();
-  }
+  if (empty) host.querySelector('.vex-empty')?.remove();
 }
 
 function refreshMelodyUi() {
   if (textSource !== 'piano') return;
   const text = buildMelodyText(state.notes);
   const input = $('melodyInput');
-  if (input && input.value !== text) {
-    input.value = text;
-  }
+  if (input && input.value !== text) input.value = text;
   updateStats(state.notes, state.lastRecommendations);
   renderMelodyScore($('melodyScore'), state.notes);
   renderEmptyHint();
@@ -180,14 +167,11 @@ function refreshMelodyUi() {
 
 function syncFromText() {
   if (textSource !== 'text') return;
-  const text = $('melodyInput').value;
-  const parsed = parseMelody(text);
+  const parsed = parseMelody($('melodyInput').value);
   state.notes = parsed.notes;
   state.lastRecommendations = [];
   state.chordCandidates = [];
-  if (parsed.errors.length) {
-    toast(parsed.errors[0]);
-  }
+  if (parsed.errors.length) toast(parsed.errors[0]);
   updateStats(state.notes, state.lastRecommendations);
   renderMelodyScore($('melodyScore'), state.notes);
   renderEmptyHint();
@@ -211,9 +195,8 @@ function analyze() {
   const { root, mode, diatonic, bars } = getContext();
   state.chordCandidates = recommendTopAll(bars, diatonic, 3);
   state.lastRecommendations = state.chordCandidates.map((candidates) => candidates[0]);
-  const avgConfidence = state.lastRecommendations.reduce((s, r) => s + r.confidence, 0) / state.lastRecommendations.length;
-  const summary = `${root} ${mode === 'major' ? '장조' : '단조'} · ${bars.length}마디 분석 완료 · 평균 추천도 ${Math.round(avgConfidence * 100)}%`;
-  setText('resultSummary', summary);
+  const avgConfidence = state.lastRecommendations.reduce((sum, rec) => sum + rec.confidence, 0) / state.lastRecommendations.length;
+  setText('resultSummary', `${root} ${mode === 'major' ? '장조' : '단조'} · ${bars.length}마디 분석 완료 · 평균 추천도 ${Math.round(avgConfidence * 100)}%`);
   renderRecommendations();
   const drawer = $('candidatesDrawer');
   if (drawer) {
@@ -234,11 +217,35 @@ function chooseChordCandidate(barIndex, candidateIndex) {
   toast(`${barIndex + 1}마디 코드를 선택했습니다`);
 }
 
+function chordChoice(bar, rootPc, quality) {
+  if (!Number.isInteger(bar) || !state.lastRecommendations[bar]) return null;
+  const candidates = state.chordCandidates[bar] || (state.chordCandidates[bar] = []);
+  if (!candidates.length) candidates.push(state.lastRecommendations[bar]);
+  let next = candidates.find((item) => item.chord.rootPc === rootPc && item.chord.quality === quality);
+  if (!next) {
+    next = createManualChordRecommendation(rootPc, quality);
+    candidates.push(next);
+  }
+  return next;
+}
+
+function applyManualChord(detail) {
+  const next = chordChoice(Number(detail?.bar), Number(detail?.rootPc), detail?.quality);
+  if (!next) {
+    toast('코드 추천 또는 코드 진행을 먼저 만들어 주세요');
+    return;
+  }
+  const bar = Number(detail.bar);
+  state.lastRecommendations[bar] = next;
+  renderRecommendations();
+  updateStats(state.notes, state.lastRecommendations);
+  toast(`${bar + 1}마디에 ${next.chord.rootName}${next.chord.quality === 'min' ? 'm' : next.chord.quality === 'dim' ? 'dim' : next.chord.quality === 'aug' ? 'aug' : ''} 코드를 적용했습니다`);
+}
+
 function restoreChordChoices(choices) {
   let changed = false;
   (Array.isArray(choices) ? choices : []).forEach(({ bar, rootPc, quality }) => {
-    const candidates = state.chordCandidates[bar];
-    const next = candidates?.find((item) => item.chord.rootPc === rootPc && item.chord.quality === quality);
+    const next = chordChoice(bar, rootPc, quality);
     const current = state.lastRecommendations[bar];
     if (!next || (current && current.chord.rootPc === rootPc && current.chord.quality === quality)) return;
     state.lastRecommendations[bar] = next;
@@ -258,8 +265,7 @@ function makeProgression() {
   const { root, mode, diatonic, bars } = getContext();
   state.lastRecommendations = buildProgression(bars, diatonic, state.pattern);
   state.chordCandidates = [];
-  const summary = `${root} ${mode === 'major' ? '장조' : '단조'} · ${PROGRESSIONS_LABEL(state.pattern)} 진행 적용`;
-  setText('resultSummary', summary);
+  setText('resultSummary', `${root} ${mode === 'major' ? '장조' : '단조'} · ${PROGRESSIONS_LABEL(state.pattern)} 진행 적용`);
   renderRecommendations();
   updateStats(state.notes, state.lastRecommendations);
   toast('코드 진행 적용 완료');
@@ -271,7 +277,7 @@ function PROGRESSIONS_LABEL(key) {
 }
 
 function preferredOctave() {
-  const melodicNotes = state.notes.filter((n) => !n.rest);
+  const melodicNotes = state.notes.filter((note) => !note.rest);
   const last = melodicNotes[melodicNotes.length - 1];
   return last && Number.isFinite(last.octave) ? Math.max(3, Math.min(5, last.octave)) : 4;
 }
@@ -289,14 +295,12 @@ function appendSuggestedMelody() {
   const octave = preferredOctave();
 
   futureChords.forEach((rec, barOffset) => {
-    const chordPcs = rec.chord.intervals.map((iv) => (rec.chord.rootPc + iv) % 12);
-    const melodicShape = [0, 2, 1, 2];
-    melodicShape.forEach((chordIndex, beat) => {
+    const chordPcs = rec.chord.intervals.map((interval) => (rec.chord.rootPc + interval) % 12);
+    [0, 2, 1, 2].forEach((chordIndex, beat) => {
       const pc = chordPcs[chordIndex % chordPcs.length];
-      const pitch = noteName(pc);
       const note = makeNote({
         pc,
-        pitch,
+        pitch: noteName(pc),
         octave,
         duration: 1,
         bar: startBar + barOffset,
@@ -308,8 +312,7 @@ function appendSuggestedMelody() {
   });
 
   textSource = 'piano';
-  const allBars = groupByBar(state.notes);
-  state.lastRecommendations = buildProgression(allBars, diatonic, state.pattern);
+  state.lastRecommendations = buildProgression(groupByBar(state.notes), diatonic, state.pattern);
   state.chordCandidates = [];
   refreshMelodyUi();
   setText('resultSummary', `${root} ${mode === 'major' ? '장조' : '단조'} · 코드 기반 2마디 멜로디 초안 추가`);
@@ -321,13 +324,14 @@ async function play() {
     toast('재생할 멜로디가 없습니다');
     return;
   }
-  if (!state.lastRecommendations.length && !analyze()) {
-    return;
-  }
+  if (!state.lastRecommendations.length && !analyze()) return;
   const bpm = Number($('bpmInput').value) || 96;
-  const pattern = state.accompaniment;
-  toast(`재생 시작 (${ACCOMPANIMENT[pattern].label})`);
-  await playSequence(state.notes, state.lastRecommendations, { bpm, pattern, onEnd: () => toast('재생 완료') });
+  toast(`재생 시작 (${ACCOMPANIMENT[state.accompaniment].label})`);
+  await playSequence(state.notes, state.lastRecommendations, {
+    bpm,
+    pattern: state.accompaniment,
+    onEnd: () => toast('재생 완료'),
+  });
 }
 
 function stop() {
@@ -378,26 +382,8 @@ function loadSample() {
   toast('예시 멜로디를 불러왔습니다');
 }
 
-function exportPng() {
-  const url = exportMelodyPng($('melodyScore'));
-  if (!url) {
-    toast('내보낼 악보가 없습니다');
-    return;
-  }
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = '238-music-composer-melody.svg';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast('악보 SVG 다운로드 시작');
-}
-
 function attachEvents() {
-  pianoRef = mountPiano($('piano'), $('pianoLabel'), {
-    onKeyPress: pushNote,
-  });
+  mountPiano($('piano'), $('pianoLabel'), { onKeyPress: pushNote });
 
   $('melodyInput').addEventListener('input', () => {
     textSource = 'text';
@@ -418,23 +404,18 @@ function attachEvents() {
   $('clearMelodyButton').addEventListener('click', clearMelody);
   $('sampleButton').addEventListener('click', loadSample);
   $('melodyAiButton').addEventListener('click', appendSuggestedMelody);
-  $('exportButton') && $('exportButton').addEventListener('click', exportPng);
-  document.addEventListener('composer:restore-chord-choices', (event) => {
-    restoreChordChoices(event.detail?.choices);
-  });
+  document.addEventListener('composer:restore-chord-choices', (event) => restoreChordChoices(event.detail?.choices));
+  document.addEventListener('composer:set-manual-chord', (event) => applyManualChord(event.detail));
 
   document.querySelectorAll('[data-accompaniment]').forEach((button) => {
     button.addEventListener('click', () => setAccompaniment(button.dataset.accompaniment));
   });
-
-  $('progressionSelect').addEventListener('change', (e) => {
-    state.pattern = e.target.value;
-  });
+  $('progressionSelect').addEventListener('change', (event) => { state.pattern = event.target.value; });
 
   const patternSelect = $('patternSelect');
   if (patternSelect) {
     setAccompaniment(patternSelect.value || state.accompaniment, { announce: false });
-    patternSelect.addEventListener('change', (e) => setAccompaniment(e.target.value));
+    patternSelect.addEventListener('change', (event) => setAccompaniment(event.target.value));
   }
 }
 

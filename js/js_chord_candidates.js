@@ -67,11 +67,13 @@ export function renderChordCandidates(host, candidatesByBar, options = {}) {
 
       const meta = document.createElement('span');
       meta.className = 'candidate-meta';
-      meta.textContent = `${rec.chord.roman} · ${confidenceLabel(rec.confidence)}`;
+      meta.textContent = rec.manual ? '직접 지정' : `${rec.chord.roman} · ${confidenceLabel(rec.confidence)}`;
 
       const why = document.createElement('span');
       why.className = 'candidate-why';
-      why.textContent = explainMatch(rec.chord, rec.matchCount || 0, rec.passingCount || 0);
+      why.textContent = rec.manual
+        ? '직접 지정한 코드입니다. 재생·저장·내보내기에 그대로 반영됩니다.'
+        : explainMatch(rec.chord, rec.matchCount || 0, rec.passingCount || 0);
 
       button.appendChild(name);
       button.appendChild(meta);
