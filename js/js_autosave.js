@@ -5,7 +5,7 @@ import { parseMelody } from './js_theory.js';
 
 const STORAGE_KEY = '238-music-composer:autosave:v1';
 const STORAGE_VERSION = 2;
-const WATCHED_IDS = ['melodyInput', 'rootSelect', 'modeSelect', 'bpmInput', 'progressionSelect', 'patternSelect'];
+const WATCHED_IDS = ['melodyInput', 'rootSelect', 'modeSelect', 'bpmInput', 'noteDurationSelect', 'progressionSelect', 'patternSelect'];
 const CHORD_QUALITIES = new Set(['maj', 'min', 'dim', 'aug']);
 const CHORD_RESTORE_DELAY = 380;
 
@@ -49,6 +49,7 @@ function readProject() {
     root: $('rootSelect')?.value || 'C',
     mode: $('modeSelect')?.value || 'major',
     bpm: $('bpmInput')?.value || '96',
+    noteDuration: $('noteDurationSelect')?.value || '1',
     progression: $('progressionSelect')?.value || 'pop',
     accompaniment: $('patternSelect')?.value || 'arpeggio',
     selectedChordChoices: readSelectedChordChoices(),
@@ -66,6 +67,7 @@ function validStoredProject(value) {
     && typeof value.root === 'string'
     && typeof value.mode === 'string'
     && typeof value.bpm === 'string'
+    && (value.noteDuration === undefined || typeof value.noteDuration === 'string')
     && typeof value.progression === 'string'
     && typeof value.accompaniment === 'string';
 }
@@ -101,6 +103,7 @@ function matchesSavedProject(saved) {
     ['rootSelect', saved.root],
     ['modeSelect', saved.mode],
     ['bpmInput', saved.bpm],
+    ['noteDurationSelect', saved.noteDuration ?? '1'],
     ['progressionSelect', saved.progression],
     ['patternSelect', saved.accompaniment],
   ].every(([id, value]) => String($(id)?.value ?? '') === String(value));
@@ -149,6 +152,7 @@ function restoreProject() {
     setControlValue('rootSelect', saved.root);
     setControlValue('modeSelect', saved.mode);
     setControlValue('bpmInput', saved.bpm);
+    setControlValue('noteDurationSelect', saved.noteDuration ?? '1');
     setControlValue('progressionSelect', saved.progression);
     setControlValue('patternSelect', saved.accompaniment);
 

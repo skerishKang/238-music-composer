@@ -53,6 +53,7 @@ function readProject() {
       root: $('rootSelect')?.value || 'C',
       mode: $('modeSelect')?.value || 'major',
       bpm: $('bpmInput')?.value || '96',
+      noteDuration: $('noteDurationSelect')?.value || '1',
       progression: $('progressionSelect')?.value || 'pop',
       accompaniment: $('patternSelect')?.value || 'arpeggio',
     },
@@ -129,8 +130,12 @@ function parseProject(rawText) {
   if (project.melody.length > MAX_MELODY_LENGTH) {
     throw new Error('멜로디가 너무 길어 불러올 수 없습니다.');
   }
+  const noteDuration = settings.noteDuration ?? '1';
   if (!hasOption('rootSelect', settings.root) || !hasOption('modeSelect', settings.mode)) {
     throw new Error('지원하지 않는 조성 또는 모드입니다.');
+  }
+  if (!hasOption('noteDurationSelect', noteDuration)) {
+    throw new Error('지원하지 않는 건반 음 길이입니다.');
   }
   if (!hasOption('progressionSelect', settings.progression) || !hasOption('patternSelect', settings.accompaniment)) {
     throw new Error('지원하지 않는 진행 또는 반주입니다.');
@@ -146,6 +151,7 @@ function parseProject(rawText) {
       root: String(settings.root),
       mode: String(settings.mode),
       bpm: normalizeBpm(settings.bpm),
+      noteDuration: String(noteDuration),
       progression: String(settings.progression),
       accompaniment: String(settings.accompaniment),
     },
@@ -177,6 +183,7 @@ function applyProject(project) {
   setControl('rootSelect', project.settings.root);
   setControl('modeSelect', project.settings.mode);
   setControl('bpmInput', project.settings.bpm);
+  setControl('noteDurationSelect', project.settings.noteDuration);
   setControl('progressionSelect', project.settings.progression);
   setControl('patternSelect', project.settings.accompaniment);
 

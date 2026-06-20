@@ -6,9 +6,55 @@ import { BLACK_KEYS, SHARP_NAMES, formatDuration } from './js_theory.js';
 const PIANO_OCTAVES = [3, 4]; // C3 ~ B4
 const WHITE_PER_OCTAVE = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 const BLACK_PER_OCTAVE = ['C#', 'D#', 'F#', 'G#', 'A#'];
+const ALLOWED_DURATIONS = new Set([0.125, 0.25, 0.5, 1, 2, 4]);
+const DURATION_OPTIONS = [
+  ['0.25', '16분음표'],
+  ['0.5', '8분음표'],
+  ['1', '4분음표'],
+  ['2', '2분음표'],
+  ['4', '온음표'],
+];
 
 const KEYBOARD_WHITE = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"];
 const KEYBOARD_BLACK = ['w', 'e', '', 't', 'y', 'u', '', 'o', 'p', ''];
+
+function selectedDuration(value) {
+  const duration = Number(value);
+  return ALLOWED_DURATIONS.has(duration) ? duration : 1;
+}
+
+function modifiedDuration(baseDuration, event) {
+  if (event.altKey) return Math.min(4, baseDuration * 2);
+  if (event.shiftKey || event.button === 2 || event.detail >= 2) return Math.max(0.125, baseDuration / 2);
+  return baseDuration;
+}
+
+function ensureDurationControl(rootEl, labelEl) {
+  const existing = document.getElementById('noteDurationSelect');
+  if (existing instanceof HTMLSelectElement) return existing;
+
+  const control = document.createElement('label');
+  control.className = 'piano-duration-control';
+  control.htmlFor = 'noteDurationSelect';
+  const title = document.createElement('span');
+  title.textContent = '건반 음 길이';
+  const select = document.createElement('select');
+  select.id = 'noteDurationSelect';
+  select.className = 'piano-duration-select';
+  select.setAttribute('aria-label', '새로 입력할 음의 길이');
+  DURATION_OPTIONS.forEach(([value, label]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    option.selected = value === '1';
+    select.appendChild(option);
+  });
+  control.append(title, select);
+
+  if (labelEl) labelEl.insertAdjacentElement('afterend', control);
+  else rootEl.insertAdjacentElement('beforebegin', control);
+  return select;
+}
 
 // 건반 데이터 생성
 function buildKeyList() {
@@ -48,12 +94,13 @@ function blackOffsetPercent(whiteIndex) {
 }
 
 export function mountPiano(rootEl, labelEl, callbacks = {}) {
-  const { onKeyPress, onKeyRelease } = callbacks;
+  const { onKeyPress, onKeyRelease, getDuration } = callbacks;
+  const durationSelect = ensureDurationControl(rootEl, labelEl);
   const { whites, blacks } = buildKeyList();
   rootEl.innerHTML = '';
 
   // 흰건반 렌더
-  whites.forEach((w, idx) => {
+  whites.forEach((w) => {
     const keyEl = document.createElement('button');
     keyEl.type = 'button';
     keyEl.className = `piano-key${w.pitch === 'C' ? ' is-c' : ''}`;
@@ -97,6 +144,7 @@ export function mountPiano(rootEl, labelEl, callbacks = {}) {
 
   // 활성 상태 추적
   const active = new Set();
+  const defaultDuration = () => selectedDuration(getDuration?.() ?? durationSelect.value);
 
   function flash(keyEl, durationValue = 1) {
     if (!keyEl) return;
@@ -113,28 +161,25 @@ export function mountPiano(rootEl, labelEl, callbacks = {}) {
   }
 
   // 마우스/터치 이벤트
-  function pointerDown(e) {
-    const target = e.target.closest('.piano-key, .piano-black');
+  function pointerDown(event) {
+    const target = event.target.closest('.piano-key, .piano-black');
     if (!target) return;
-    e.preventDefault();
-    let duration = 1;
-    if (e.shiftKey || e.button === 2 || e.detail >= 2) duration = 0.5;
-    if (e.altKey) duration = 2;
-    flash(target, duration);
+    event.preventDefault();
+    flash(target, modifiedDuration(defaultDuration(), event));
   }
-  function contextMenu(e) {
-    e.preventDefault();
+  function contextMenu(event) {
+    event.preventDefault();
   }
 
   rootEl.addEventListener('pointerdown', pointerDown);
   rootEl.addEventListener('contextmenu', contextMenu);
 
-  // 더블클릭 = 짧은 음표
-  rootEl.addEventListener('dblclick', (e) => {
-    e.preventDefault();
-    const target = e.target.closest('.piano-key, .piano-black');
+  // 더블클릭 = 기본 길이의 절반
+  rootEl.addEventListener('dblclick', (event) => {
+    event.preventDefault();
+    const target = event.target.closest('.piano-key, .piano-black');
     if (!target) return;
-    flash(target, 0.5);
+    flash(target, Math.max(0.125, defaultDuration() / 2));
   });
 
   // 키보드 입력
@@ -143,30 +188,24 @@ export function mountPiano(rootEl, labelEl, callbacks = {}) {
       .find((el) => el.dataset.pitch === `${pitch}${octave}`);
   }
 
-  function handleKey(e) {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-    const key = e.key.toLowerCase();
+  function handleKey(event) {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+    const key = event.key.toLowerCase();
     const idxW = KEYBOARD_WHITE.indexOf(key);
     const idxB = KEYBOARD_BLACK.indexOf(key);
     if (idxW < 0 && idxB < 0) return;
     if (idxW >= 0 && idxW < whites.length) {
-      const w = whites[idxW];
-      const el = keyIndexOf(w.pitch, w.octave);
-      let duration = 1;
-      if (e.shiftKey) duration = 0.5;
-      if (e.altKey) duration = 2;
-      flash(el, duration);
-      e.preventDefault();
+      const white = whites[idxW];
+      const el = keyIndexOf(white.pitch, white.octave);
+      flash(el, modifiedDuration(defaultDuration(), event));
+      event.preventDefault();
       return;
     }
     if (idxB >= 0 && idxB < blacks.length) {
-      const b = blacks[idxB];
-      const el = keyIndexOf(b.pitch, b.octave);
-      let duration = 1;
-      if (e.shiftKey) duration = 0.5;
-      if (e.altKey) duration = 2;
-      flash(el, duration);
-      e.preventDefault();
+      const black = blacks[idxB];
+      const el = keyIndexOf(black.pitch, black.octave);
+      flash(el, modifiedDuration(defaultDuration(), event));
+      event.preventDefault();
     }
   }
   window.addEventListener('keydown', handleKey);
