@@ -38,6 +38,7 @@
 
 .piano-duration-control {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin: -4px 0 14px;
@@ -53,6 +54,12 @@
   background: var(--panel);
   color: var(--text);
   font: inherit;
+}
+
+.piano-rest-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
 }
 
 .piano {
